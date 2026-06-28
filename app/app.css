@@ -7464,14 +7464,14 @@ body.dpr-sidebar-resizing {
 .dpr-sidebar-paper-title::after {
   content: "..";
   position: absolute;
-  right: 20px;
+  right: calc(20px - 2ch);
   top: 0;
   bottom: 0;
-  width: calc(2ch + 7px);
-  padding-left: 7px;
-  background: var(--dpr-sidebar-paper-bg);
+  width: 2ch;
+  padding-left: 0;
+  background: transparent;
   color: inherit;
-  text-align: right;
+  text-align: left;
   opacity: 0;
   pointer-events: none;
 }
@@ -7484,7 +7484,7 @@ body.dpr-sidebar-resizing {
 }
 .dpr-sidebar-paper:hover .dpr-sidebar-paper-title::after,
 .dpr-sidebar-paper:focus-within .dpr-sidebar-paper-title::after {
-  right: var(--dpr-sidebar-paper-action-reserve);
+  right: calc(var(--dpr-sidebar-paper-action-reserve) - 2ch);
 }
 .dpr-sidebar-paper-meta {
   display: flex;
