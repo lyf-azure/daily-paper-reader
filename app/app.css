@@ -6890,7 +6890,7 @@ body.dpr-sidebar-v2.dpr-sidebar-v2-collapsed .chat-footer {
   --dpr-sidebar-collapsed-width: 0px;
   --dpr-sidebar-sticky-panel-top: 0px;
   --dpr-sidebar-sticky-axis-top: 36px;
-  --dpr-sidebar-sticky-section-top: 74px;
+  --dpr-sidebar-sticky-section-top: 86px;
   --dpr-sidebar-sticky-mask-bg: var(--dpr-sidebar-surface);
   --dpr-sidebar-sticky-mask-bleed: 8px;
   --dpr-sidebar-paper-action-reserve: calc(52px + 2ch);
@@ -7236,6 +7236,8 @@ body.dpr-sidebar-resizing {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-height: 46px;
+  box-sizing: border-box;
   padding: 4px 8px 6px 14px;
 }
 .dpr-sidebar-panel.is-expanded > .dpr-sidebar-panel-content > .dpr-sidebar-axis-row {
@@ -7499,6 +7501,7 @@ body.dpr-sidebar-resizing {
   align-items: center;
   gap: 6px;
   width: 100%;
+  min-height: 30px;
   padding: 0;
   background: transparent;
   border: none;
@@ -7542,10 +7545,12 @@ body.dpr-sidebar-resizing {
   gap: 6px;
   flex: 1;
   min-width: 0;
-  padding: 5px 14px 4px 0;
-  font-size: 12px;
+  padding: 7px 14px 6px 0;
+  font-size: 13px;
+  line-height: 1.25;
   color: #64748b;
   font-weight: 600;
+  box-sizing: border-box;
 }
 .dpr-sidebar-axis-section-header > .dpr-sidebar-day-arrow {
   margin-left: 14px;
@@ -7557,6 +7562,7 @@ body.dpr-sidebar-resizing {
   margin-left: auto;
   color: #94a3b8;
   font-weight: 500;
+  font-size: 12.5px;
 }
 .dpr-sidebar-axis-papers {
   list-style: none;

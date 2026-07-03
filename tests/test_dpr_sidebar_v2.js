@@ -728,8 +728,13 @@ function testSidebarPaperVisualStateCssContract() {
   assert.ok(/\.dpr-sidebar-paper:hover \.dpr-sidebar-paper-evidence,\s*\.dpr-sidebar-paper:focus-within \.dpr-sidebar-paper-evidence,\s*\.dpr-sidebar-paper:hover \.dpr-sidebar-paper-meta,\s*\.dpr-sidebar-paper:focus-within \.dpr-sidebar-paper-meta\s*{[^}]*padding-right:\s*var\(--dpr-sidebar-paper-action-reserve\)/i.test(css));
 
   const sectionLabelRule = cssRule(css, '.dpr-sidebar-axis-section-label');
-  assert.ok(/font-size:\s*12px/i.test(sectionLabelRule));
+  assert.ok(/font-size:\s*13px/i.test(sectionLabelRule));
+  assert.ok(/line-height:\s*1\.25/i.test(sectionLabelRule));
+  assert.ok(/padding:\s*7px 14px 6px 0/i.test(sectionLabelRule));
+  assert.ok(/box-sizing:\s*border-box/i.test(sectionLabelRule));
   assert.ok(/(?:^|\n)\.dpr-sidebar-day-counts\s*{[^}]*font-size:\s*12px/i.test(css));
+  const sectionCountRule = cssRule(css, '.dpr-sidebar-axis-section-label > .dpr-sidebar-day-counts');
+  assert.ok(/font-size:\s*12\.5px/i.test(sectionCountRule));
   const metaRule = cssRule(css, '.dpr-sidebar-paper-meta');
   assert.ok(/font-size:\s*12px/i.test(metaRule));
   const starsRule = cssRule(css, '.dpr-sidebar-paper-stars');
@@ -762,7 +767,7 @@ function testSidebarStickyHierarchyCssContract() {
   assert.ok(/--dpr-sidebar-sticky-mask-bleed:\s*8px/i.test(rootRule));
   assert.ok(/--dpr-sidebar-sticky-panel-top:\s*0px/i.test(rootRule));
   assert.ok(/--dpr-sidebar-sticky-axis-top:\s*36px/i.test(rootRule));
-  assert.ok(/--dpr-sidebar-sticky-section-top:\s*74px/i.test(rootRule));
+  assert.ok(/--dpr-sidebar-sticky-section-top:\s*86px/i.test(rootRule));
 
   const panelHeaderBaseRule = cssRule(css, '.dpr-sidebar-panel-header');
   assert.ok(/padding:\s*8px 14px/i.test(panelHeaderBaseRule));
@@ -780,6 +785,10 @@ function testSidebarStickyHierarchyCssContract() {
   assert.ok(/z-index:\s*17/i.test(axisRowRule));
   assert.ok(/isolation:\s*isolate/i.test(axisRowRule));
   assert.ok(/background:\s*var\(--dpr-sidebar-sticky-mask-bg\)/i.test(axisRowRule));
+
+  const axisRowBaseRule = cssRule(css, '.dpr-sidebar-axis-row');
+  assert.ok(/min-height:\s*46px/i.test(axisRowBaseRule));
+  assert.ok(/box-sizing:\s*border-box/i.test(axisRowBaseRule));
 
   const axisToggleRule = cssRule(css, '.dpr-sidebar-axis-toggle');
   assert.ok(/display:\s*inline-flex/i.test(axisToggleRule));
