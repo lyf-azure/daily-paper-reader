@@ -1,0 +1,277 @@
+Title: DART-VLN: Test-Time Memory Decay and Anti-Loop Regularization for Discrete Vision-Language Navigation
+
+URL Source: https://arxiv.org/pdf/2607.01043v1
+
+Published Time: Thu, 02 Jul 2026 01:12:22 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# DART-VLN: Test-Time Memory Decay and Anti-Loop Regularization for Discrete Vision-Language Navigation 
+
+Shaoheng Zhang 1, Zhichen Li 2, and Jie Mei 1,∗ 
+
+> 1
+
+School of Intelligence Science and Engineering  
+
+> 2
+
+School of Computer Science and Technology Harbin Institute of Technology, Shenzhen Shenzhen, China 
+
+2023312309@stu.hit.edu.cn, 2023111963@stu.hit.edu.cn, jmei@hit.edu.cn 
+
+Abstract — Memory-based discrete vision-language naviga-tion (VLN) agents must act under partial observability, yet even strong frozen backbones remain vulnerable at test time. Two common failure modes are stale historical evidence at memory readout and inefficient local backtracking during action selec-tion. We present DART-VLN, a training-free test-time control framework for discrete VLN. DART-VLN combines Test-Time Memory Decay, a read-side memory reweighting rule that sup-presses stale and redundant evidence without rewriting stored content, with Anti-Loop Regularization, a lightweight next-hop penalty that discourages immediate reversals during action selection. The framework introduces no new learnable param-eters and leaves the learned backbone unchanged. Experiments on R2R and REVERIE show a consistent pattern: decay-only provides stable read-side gains, while decay+anti-loop achieves the best overall quality-efficiency trade-off, yielding shorter tra-jectories, lower runtime, and improved navigation performance in key settings. Behavioral analysis further confirms that anti-loop regularization reduces local backtracking and improves path efficiency under frozen backbones. Overall, the results show that modest test-time control can make memory-based discrete VLN more reliable and efficient without retraining. 
+
+Index Terms — Vision-Language Navigation, Discrete Naviga-tion, Test-Time Control, Memory Decay, Anti-Loop Regulariza-tion 
+
+I. I NTRODUCTION 
+
+Language-guided embodied navigation requires reli-able sequential decision-making under partial observabil-ity. Vision-language navigation (VLN) provides a standard testbed for this problem by asking an embodied agent to move through an environment using language and visual observations [1], [2]. Among existing formulations, discrete VLN is especially attractive because it operates over ex-plicit viewpoint graphs and supports controllable step-wise decision-making [3]–[5]. Recent progress in VLN has come from stronger pre-trained navigators, explicit memory or map representations, broader training resources, and more sophisticated recovery or planning mechanisms [3], [6]–[9]. Together, these ad-vances have substantially improved long-horizon reasoning and benchmark performance. Yet a practical gap remains at inference time: even strong memory-based discrete VLN      
+
+> * Corresponding author. Code will be released at https://github.com/Japluto/ DART-VLN .
+
+backbones can still behave unreliably under frozen pa-rameters. In many cases, further gains rely on retraining, architectural redesign, or heavier planning modules, which are less appealing when the goal is to strengthen an already competitive navigator with minimal intervention. In this setting, two recurring failure modes become par-ticularly important. The first appears at memory readout. Explicit navigation memory helps agents reason over longer trajectories by storing previously visited viewpoints, visual features, or map-level context [3]–[5], [7], [10]–[12]. Yet as navigation proceeds, stale or repeatedly observed evidence may remain active after its usefulness has faded, making memory aggregation noisier at decision time. The second appears at action selection. Even with a strong frozen back-bone, agents still exhibit inefficient local behaviors such as immediate reversals and short loops [13]–[15]. These behaviors do not always destroy the final outcome, but they lengthen trajectories, waste steps, and increase runtime. This motivates a simple question: how much can be gained from lightweight test-time control alone, without retraining the model or redesigning the navigation stack? We answer this question with DART-VLN, a training-free test-time control framework for memory-based discrete VLN. As summarized in Fig. 1, DART-VLN introduces two comple-mentary mechanisms that operate directly inside the existing inference loop. Test-Time Memory Decay is a read-side reweighting rule that suppresses stale and redundant evidence during memory aggregation without rewriting stored content. 
+
+Anti-Loop Regularization is a lightweight next-hop penalty that discourages immediate backtracking during action selec-tion. Together, these components improve inference behavior while leaving the learned backbone untouched and introduc-ing no new learnable parameters. We evaluate DART-VLN on R2R and REVERIE using a GridMM-style discrete navigation pipeline [3]. The re-sults show a consistent pattern across both benchmarks: 
+
+decay-only isolates a stable read-side gain, while the full 
+
+decay+anti-loop setting delivers the best overall quality-efficiency trade-off, with shorter trajectories and lower run-time under frozen backbones. Behavioral analysis further shows that the clearest direct effect of anti-loop regulariza-tion is reduced local backtracking and improved path effi-ciency. These findings suggest that modest test-time control  
+
+> arXiv:2607.01043v1 [cs.RO] 1 Jul 2026 Fig. 1. DART-VLN test-time pipeline for discrete VLN. The environment maintains explicit grid memory with optional write-side updates (update-only/full-mode). Read-side memory decay reweights memory during grid aggregation, and anti-loop regularization adjusts candidate action scores using next-hop penalties before argmax. No retraining or new learnable parameters are introduced.
+
+can meaningfully strengthen memory-based discrete VLN without reopening training. 
+
+A. Contributions  
+
+> •
+
+We propose a training-free read-side memory control strategy that suppresses stale and redundant histori-cal evidence during memory readout without rewriting stored memory content.  
+
+> •
+
+We propose a lightweight next-hop-based action reg-ularization mechanism that reduces local backtracking and improves efficiency-side trajectory behavior during inference.  
+
+> •
+
+Experiments on representative discrete VLN bench-marks show that decay-only isolates a stable read-side gain, while the full decay+anti-loop setting achieves the most favorable quality-efficiency trade-off under frozen backbones. II. R ELATED WORK 
+
+Memory and map-based discrete VLN: Explicit memory and map representations have become a common way to sta-bilize long-horizon reasoning in discrete VLN. Recent meth-ods store visited viewpoints, aggregate graph-level context, or build richer topological or map-like state representations for navigation [3]–[5], [10], [11]. Although these approaches differ in form, they share a common goal: strengthening spatial grounding and history aggregation through a more informative external state. By contrast, DART-VLN does not introduce a new memory structure, map encoder, or fusion ar-chitecture. Instead, it operates on top of an existing explicit-memory pipeline and focuses on improving how historical evidence is used at test time under frozen parameters. The distinction is therefore not whether memory matters, but whether improvement comes from richer memory construc-tion or from tighter control over memory usage at inference time. 
+
+Backtracking, rewind, and local recovery: A second line of work targets local navigation failures such as wrong turns, backtracking, and short loops [13]–[15]. Regret-aware and foresighted navigation methods show that local recovery de-cisions can materially affect trajectory efficiency, while more planning-oriented approaches further strengthen correction behavior through richer control mechanisms. These methods highlight the importance of local trajectory management, but they are often coupled with learned progress estimation, explicit correction policies, or stronger planning modules. Our anti-loop module shares the same behavioral motivation, yet it is deliberately narrower in scope: it acts as a lightweight next-hop regularizer on graph-local action scores at inference time, rather than as a planner or learned self-correction policy. 
+
+Inference-time control versus retraining-heavy improve-ment: Many strong gains in VLN come from architectural extension, richer scene modeling, or heavier planning mod-ules [8], [9], [16]. These directions are effective, but they are less suitable when the practical goal is to improve an already competitive frozen navigator without reopening the training pipeline. More recent work has also begun exploring training-free or test-time intervention in VLN, reflecting growing interest in improving deployed navigators without a new training cycle [17], [18]. DART-VLN is positioned in this low-intrusion regime: it introduces no new learnable parameters, leaves the learned backbone unchanged, and con-fines intervention to read-side memory control and action-side local regularization. In this sense, our goal is not to redesign the navigator itself, but to improve its test-time behavior in a lightweight and interpretable manner. III. M ETHOD 
+
+A. Problem Setting and Baseline Navigation Inference 
+
+We consider a memory-based agent operating on a discrete navigation graph G = (V, E ), where each node denotes a viewpoint and each edge represents a feasible transition. Given a natural-language instruction x, the agent starts from an initial viewpoint v0 and makes sequential naviga-tion decisions over the graph, producing a trajectory τ =(v0, v 1, . . . , v T ). At each step t, the agent receives the current visual observation at vt, retrieves historical information from an explicit navigation memory, and scores the candidate actions reachable from the current viewpoint. Our method is built on a GridMM-style discrete VLN pipeline [3]. The baseline encodes the instruction and cur-rent observation, aggregates historical evidence from explicit memory slots {mi}, and computes action scores st(v) for candidate target viewpoints v before selecting the next action. This explicit-memory design provides useful long-horizon context, but it also introduces an inference-time challenge: historical evidence that is stale or repeatedly observed may continue to influence the current decision. Our goal is not to redesign the backbone, memory struc-ture, or training objective. Instead, we introduce lightweight test-time control into the existing inference loop. Specifically, we intervene at memory readout and action selection: mem-ory slots are reweighted during aggregation to suppress stale or redundant evidence, and candidate scores are regularized before argmax decoding to discourage inefficient local rever-sals. Throughout this process, the learned backbone remains frozen and no new learnable parameters are introduced. Although motivated by reliable embodied navigation under partial observability [19], the method is defined and validated here in a representative discrete VLN setting. The following subsections describe the proposed read-side memory control and action-side regularization in detail. 
+
+B. Test-Time Memory Decay 1) Motivation: In memory-based navigation, not all his-torical evidence remains equally useful throughout inference [10], [11], [16]. As the trajectory grows, some memory slots may encode information that is outdated, overly repeated, or only weakly relevant to the current decision. If such evidence continues to contribute with the same strength as fresher observations, memory aggregation can become noisier and less selective at test time. To address this issue, we adopt a conservative read-side strategy. Rather than rewriting stored memory content, we adjust only how strongly each slot contributes at readout. This preserves compatibility with the baseline memory struc-ture while allowing stale and redundant evidence to be suppressed during inference. 
+
+2) Slot Metadata: For each memory slot mi, we maintain three lightweight metadata variables: slot age ai, visit count 
+
+ci, and novelty ni. The slot age is defined as 
+
+ai = t − tlast  
+
+> i
+
+,
+
+where tlast  
+
+> i
+
+is the most recent step at which slot i was refreshed. The visit count ci reflects how often the corre-sponding region has been repeatedly observed. The novelty term ni captures recent feature change and is smoothed over time. Concretely, let f old  
+
+> i
+
+and f new  
+
+> i
+
+denote the previous and current slot features. We first compute an instantaneous novelty score 
+
+νi = clip  1 − cos( f old  
+
+> i
+
+, f new  
+
+> i
+
+), 0, 1, (1) and then update the novelty estimate with an exponential moving average: 
+
+n(t) 
+
+> i
+
+= ρn (t−1)  
+
+> i
+
++ (1 − ρ)νi. (2) Here, ρ ∈ [0 , 1) controls how strongly past novelty estimates are retained over time. In our implementation, ρ = 0 .5.Together, these metadata provide a lightweight summary of whether a slot is recent, over-repeated, or still changing in a potentially useful way. 
+
+3) Memory Reweighting: Based on the metadata above, we assign a heuristic readout weight wi to each memory slot. Since νi is clipped to [0 , 1] and ni is obtained by exponential smoothing, we also have ni ∈ [0 , 1] . The readout weight is defined as 
+
+wi = clip 
+
+
+
+exp( −λa i)
+
+
+
+1 − α ci
+
+ci + 1 
+
+
+
+(0 .5 + 0 .5ni),wmin , w max 
+
+
+
+.
+
+(3) This formulation combines three intuitive factors. The recency term exp( −λa i) downweights slots that have not been refreshed for many steps. The repetition term  1 −
+
+α ci
+
+> ci+1
+
+ reduces the influence of slots associated with re-peatedly observed regions, where α controls the strength of repetition suppression. The novelty term (0 .5 + 0 .5ni) softly favors slots that still exhibit noticeable recent feature change. Finally, clipping to [wmin , w max ] prevents the reweighting from becoming either too weak or too aggressive. In the mainline design, these weights are applied only dur-ing memory readout. The weighted memory is then passed into the original navigation pipeline without modifying the stored slot content itself. This keeps the intervention simple, training-free, and easy to isolate in ablation. 
+
+4) Boundary of Decay-Only: In the decay-only setting, only the read-side reweighting in Eq. (3) is applied. The stored slot representation and the baseline memory update behavior remain unchanged. This distinguishes the method from write-side heuristics that directly rewrite memory con-tent. In other words, decay-only should be viewed as a read-side denoising rule rather than as a new memory-learning mechanism. 
+
+5) Write-Side Memory Update Variants: Beyond read-side decay, we also explored a more aggressive write-side memory update before readout. In this exploratory setting, matched slots are refreshed with a simple heuristic gate based on novelty, age, and repetition statistics, while unmatched observations append new slots. We report the write-side update alone as update-only and its combination with read-side decay as full-mode . Because these rewriting variants were less stable than the conservative read-side design, we treat them as boundary comparisons rather than as part of the DART-VLN mainline. 
+
+C. Anti-Loop Regularization for Navigation Decision-Making 1) Motivation: Immediate backtracking is a common lo-cal failure mode in embodied navigation [13]–[15]. Repeated reversals and related short loops can inflate path length, waste steps, and degrade trajectory efficiency even when the agent eventually reaches a reasonable destination. These behaviors therefore matter not only because they are inefficient, but also because they expose the agent to additional decision points that may accumulate further error at test time. This makes local loop suppression a suitable target for lightweight inference-time control. In our design, anti-loop regularization is intentionally conservative: its purpose is to improve local path behavior under frozen backbones, rather than to serve as a planner or to guarantee monotonic gains on all endpoint metrics. 
+
+2) Next-Hop Based Penalty: Let st(v) denote the original action score assigned at step t to a candidate target viewpoint 
+
+v. Rather than directly penalizing a final candidate viewpoint, we examine the graph next hop h(v), namely the first local transition on the path from the current viewpoint to v. We then define a lightweight penalty 
+
+pt(v) = βback ·I[h(v) = vt−1]+ βrev ·I[visit( h(v)) ≥ k], (4) and use it to adjust the action score: 
+
+s′
+
+> t
+
+(v) = st(v) − pt(v). (5) The first term penalizes immediate backtracking, i.e., cases where the next hop directly returns to the previous viewpoint vt−1. The second term provides a weak extension for repeated revisits. Here, visit( h(v)) denotes the number of prior visits to the next-hop viewpoint, βrev controls the revisit penalty strength, and k is the revisit threshold. In the finalized setting, this revisit term is kept small and activated only after repeated revisits with k = 2 . As a result, the dominant effect of the module remains immediate backtrack suppression. This next-hop formulation is important because it targets the local transition actually executed at the current step, rather than only adjusting a more distant target score. It there-fore aligns the regularizer with the trajectory-level behavior we aim to change. 
+
+3) Inference Scope: The anti-loop module is applied only at test time and is intended for deterministic, argmax-based navigation inference. In the full DART-VLN configuration, it is combined with read-side memory decay and applied to candidate action scores before action selection. The module does not modify the stop head, introduce a separate planning component, or alter the learned backbone. Its scope is delib-erately narrow: it acts as a graph-local action regularizer for improving efficiency-side behavior under frozen inference. 
+
+Algorithm 1: Mainline DART-VLN Inference                                                                  
+
+> Notation: h(v): graph next hop of candidate viewpoint vpt(v): anti-loop penalty
+> s′
+> t(v): adjusted action score
+> Input :Instruction x; initial viewpoint v0; max step Tmax ;memory slots {mi}with metadata {ai, c i, n i}
+> Output :Navigation trajectory τ
+> 1Function DART-VLN-Infer( x, v 0,{mi, a i, c i, n i}, T max ):
+> 2Initialize τ←(v0)and the visit counts from the start viewpoint
+> 3for t←0to Tmax −1do
+> 4Encode the instruction and current observation at vt
+> 5Compute read-side memory weights wiusing Eq. (3)
+> 6Aggregate weighted memory and obtain candidate scores
+> {st(v)}
+> 7for each candidate target viewpoint vdo
+> 8Compute graph next hop h(v)from the current viewpoint
+> 9Compute penalty pt(v)using Eq. (4)
+> 10 Update adjusted score s′
+> t(v)←st(v)−pt(v)
+> 11 Select the next action by arg max vs′
+> t(v)
+> 12 if STOP is selected then
+> 13 return τ
+> 14 Execute the transition and append the new viewpoint to τ
+> 15 Update visit counts and refresh memory / slot metadata for the next step
+> 16 return τ
+
+D. Design Principle: Conservative Test-Time Control 
+
+DART-VLN follows a simple principle: under frozen back-bones, modest test-time interventions are often more depend-able than aggressive rewriting or correction. Accordingly, the practical mainline combines read-side memory decay with local anti-loop regularization, rather than relying on heavier manipulation of the navigation process. This choice is intentional. Read-side reweighting sup-presses stale evidence without perturbing the stored represen-tation used by the backbone, while the action-side regularizer is kept narrow so that it discourages wasteful local loops without over-constraining exploration. For this reason, more aggressive variants are treated only as boundary comparisons rather than as part of the final method. Algorithm 1 summa-rizes the resulting inference flow. IV. E XPERIMENTS 
+
+A. Experimental Setup 
+
+We evaluate DART-VLN on two representative discrete VLN benchmarks: Room-to-Room (R2R) [1] and REVERIE [20]. There are several standard metrics for evaluating VLN agents, including Trajectory Length (TL), Navigation Error (NE), Success Rate (SR), Oracle Success Rate (OSR), Suc-cess weighted by Path Length (SPL), Remote Grounding Success (RGS), and Remote Grounding Success weighted by Path Length (RGSPL). For R2R, Table I reports TL, NE, SR, SPL, and runtime on val unseen and test unseen .For REVERIE, Table II reports TL, OSR, SR, SPL, RGS, RGSPL, and runtime on val unseen . In the discussion below, we mainly treat SR, SPL, and RGSPL as the primary task metrics, while TL, NE, and runtime are used to interpret efficiency and stability under frozen backbones. All variants use the same checkpoints as the baseline and differ only in inference-time control switches; no retraining is involved. Unless otherwise stated, DART-VLN refers to TABLE I RESULTS ON THE R2R DATASET 
+
+Methods Val Unseen Test Unseen 
+
+TL ↓ NE ↓ SR ↑ SPL ↑ Runtime(s) ↓ TL ↓ NE ↓ SR ↑ SPL ↑ Runtime(s) ↓
+
+VLNBERT [6] 12.03 3.93 63 57 – 12.37 4.11 63 57 –AirBERT [21] 11.78 3.99 62 56 – 12.40 4.15 62 57 –SEvol [9] 12.22 3.96 62 57 – 13.42 4.17 62 57 –HOP [22] 12.28 3.81 64 57 – 12.71 3.87 64 59 –HAMT [7] 11.44 2.31 66 61 – 12.27 3.95 65 60 –TD-STP [23] – 3.23 70 63 – – 3.72 67 61 –DUET [4] 13.92 3.33 72 60 – 14.71 3.63 69 59 –BEVBert [5] 14.52 2.83 74 64 – 15.88 3.15 73 62 –GridMM (baseline) [3] 13.27 2.83 74 64 937.99 14.43 3.35 73 62 2312.52 update-only 13.92 2.86 75 63 891.12 16.2 3.37 72 59 1725.22 decay-only 13.29 2.59 76 65 742.61 14.52 3.19 73 62 1621.34 full-mode 13.77 2.80 75 64 1000.84 15.95 3.30 72 60 2475.63 
+
+decay+anti-loop 12.41 ↓ 2.69 76 ↑ 66 ↑ 666.37 ↓ 13.80 ↓ 3.38 74 ↑ 63 ↑ 1329.56 ↓  
+
+> Note: GridMM is the baseline of our experiments. Runtime is reported only for GridMM and its inference-time variants, because runtime comparisons across papers are not directly meaningful and depend on implementation details, hardware, simulator settings, and backbone scale.
+
+the combined decay+anti-loop configuration under determin-istic argmax inference. We also report update-only , decay-only , and full-mode as ablation and boundary variants. The mainline setting uses λ = 0 .12 , α = 0 .15 , wmin = 0 .35 ,
+
+wmax = 1.0, βback = 0.22 , βrev = 0.06 , and k = 2.For the exploratory write-side variants, we use g0 = 0 .15 ,
+
+λn = 0.35 , λa = 0.20 , λc = 0.15 , gmin = 0.05 ,
+
+gmax = 0 .85 , Tmax = 20 , and rmatch = 0 .75 . Runtime is reported only for GridMM and its inference-time variants. Cross-paper runtime is not directly comparable because it depends on implementation details, hardware, simulator settings, and backbone scale. All runtime measurements in this work are obtained under the same implementation and hardware setting on an NVIDIA GeForce RTX 5070 Ti GPU. For the behavioral diagnosis in Table III, backtrack rate is defined as the percentage of executed actions whose next viewpoint returns to the viewpoint from two steps earlier, and Avg. Steps counts actions before STOP. 
+
+B. Main Results on R2R and REVERIE 
+
+Tables I and II summarize the main results on R2R and REVERIE, respectively. Across both benchmarks, the same broad trend appears: decay-only already yields a clear read-side gain over the GridMM baseline, while the full 
+
+decay+anti-loop configuration provides the strongest over-all quality-efficiency trade-off. We discuss the benchmark-specific outcomes below and return to the role of the bound-ary variants in Sec. IV-C. 
+
+R2R. Table I reports results on both val unseen and 
+
+test unseen . On this benchmark, decay-only already shows the value of conservative read-side control: compared with GridMM, it improves NE from 2.83 to 2.59 on val unseen 
+
+and from 3.35 to 3.19 on test unseen , while also reducing runtime from 937.99 s to 742.61 s and from 2312.52 s to 1621.34 s, respectively. Its SR and SPL are maintained or slightly improved, which suggests that suppressing stale and redundant evidence at memory readout can make the baseline inference process both cleaner and more efficient. Adding anti-loop regularization yields the best overall variant on R2R. The decay+anti-loop setting achieves the                                                       
+
+> TABLE II RESULTS ON REVERIE V AL UNSEEN DATASET
+> Methods Val Unseen
+> Runtime(s) ↓Navigation Grounding
+> TL ↓OSR ↑SR ↑SPL ↑RGS ↑RGSPL ↑
+> VLNBERT [6] 16.75 35.08 30.63 24.90 18.72 15.23 –AirBERT [21] 18.71 34.51 27.88 21.83 18.19 14.16 –HOP [22] 16.46 36.24 31.78 26.15 18.82 15.73 –HAMT [7] 14.08 36.84 32.91 30.23 18.90 17.26 –TD-STP [23] –39.48 34.89 27.34 21.13 16.52 –DUET [4] 22.12 51.08 46.96 33.77 32.12 23.01 –BEVBert [5] –56.38 51.79 36.35 34.70 24.46 –GridMM [3] 23.20 57.48 51.37 36.47 34.57 24.56 4329.67 update-only 23.77 57.12 50.84 35.85 33.98 23.80 4276.31 decay-only 23.15 58.12 51.98 36.60 34.68 24.72 2998.49 full-mode 23.18 57.94 51.80 36.45 34.65 24.68 4603.40
+> decay+anti-loop 21.57 57.99 52.34 37.53 35.37 25.44 1497.98
+> Note: GridMM is the baseline of our experiments. Runtime is reported only for GridMM and its inference-time variants, because runtime comparisons across papers are not directly meaningful and depend on implementation details, hardware, simulator settings, and backbone scale. The official REVERIE test unseen evaluation server is no longer available, so we report only Val Unseen results.
+
+shortest trajectory length and the lowest runtime on both splits, while also improving SR and SPL over the baseline. On val unseen , it reduces TL from 13.27 to 12.41 and raises SPL from 64 to 66. On test unseen , it reduces TL from 14.43 to 13.80 and improves SR/SPL from 73/62 to 74/63. Although NE on test unseen does not improve monotonically relative to the baseline (3.38 versus 3.35), the overall result still reflects the most favorable balance between navigation quality and execution efficiency. 
+
+REVERIE. Table II reports results on val unseen , which remains the most relevant split for unseen generalization in the currently available evaluation setting. REVERIE shows the same qualitative trend as R2R. The decay-only variant again provides a clean conservative gain: relative to GridMM, it slightly improves OSR, SR, SPL, RGS, and RGSPL, while reducing runtime from 4329.67 s to 2998.49 s. This indicates that the benefit of read-side memory control is not limited to standard navigation success, but also transfers to the more demanding setting where remote object grounding is part of the task outcome. Fig. 2. Qualitative local behavior under anti-loop regularization. Compared with the baseline, decay+anti-loop avoids immediate backtracking and wrong revisits, yielding a shorter local path. 
+
+The full decay+anti-loop configuration provides the strongest overall result on REVERIE. Compared with GridMM, it shortens TL from 23.20 to 21.57, improves SR from 51.37 to 52.34, raises SPL from 36.47 to 37.53, and increases RGSPL from 24.56 to 25.44. The runtime reduction is especially notable, dropping from 4329.67 s to 1497.98 s. As on R2R, this pattern suggests that anti-loop regularization is most valuable when added on top of the more stable read-side decay variant, rather than when paired with stronger write-side intervention. Taken together, the two benchmarks support the same practical conclusion: read-side decay provides a stable im-provement over the baseline, and adding anti-loop regulariza-tion further strengthens the overall quality-efficiency trade-off. The next subsection examines the role of the remaining variants more directly. 
+
+C. Ablation and Boundary Variants 
+
+The comparison among update-only , decay-only , full-mode , and decay+anti-loop helps clarify the role of each component in DART-VLN. The first observation is that 
+
+decay-only provides the most stable single-module gain. Across both R2R and REVERIE, it consistently improves or preserves the main task metrics while reducing runtime relative to the GridMM baseline. This supports our central claim that lightweight read-side memory control alone can already improve frozen-backbone inference without modify-ing the stored memory representation. The second observation is that stronger intervention is not necessarily better. Both update-only and full-mode in-troduce write-side memory rewriting before readout, making them more aggressive than the conservative read-side design. However, their gains are less consistent across benchmarks and, in several cases, they underperform both decay-only and the final decay+anti-loop configuration. This suggests that under frozen backbones, directly rewriting stored memory may disturb representations that the baseline policy already uses effectively. For this reason, we treat these variants as boundary comparisons rather than as part of the DART-VLN mainline. The third observation is that decay+anti-loop should be interpreted as building on the stable read-side gain of decay-only , rather than replacing it. The consistent pattern across Tables I and II is that memory decay provides the stronger and more dependable base improvement, while anti-loop regularization adds a narrow action-side controller that fur-ther improves the practical quality-efficiency trade-off. In this sense, the final method is not defined by maximal intervention, but by the most reliable combination under frozen inference. The overall ablation therefore supports the design principle of DART-VLN: under frozen backbones, modest and well-scoped test-time control is more reliable than heavier intervention. 
+
+D. Navigation Behavior and Efficiency Analysis 
+
+We do not position anti-loop regularization as a mecha-nism that guarantees monotonic gains on all final navigation metrics. Instead, its most direct value lies in improving local trajectory behavior under frozen backbones. Figure 2 provides an illustrative example, while Table III quantifies the same pattern through immediate backtrack rate, average action steps, and average trajectory length. On R2R, the comparison among the baseline, decay-only , and decay+anti-loop makes this distinction clear. The 
+
+decay-only variant leaves local reversal behavior essentially unresolved: its average action count changes only marginally, and its immediate backtrack rate is slightly higher than that of the baseline. This is consistent with its role as a read-side denoising rule rather than a direct motion regularizer. By contrast, adding anti-loop regularization lowers the im-mediate backtrack rate from 3.51% to 2.01%, while further reducing average action steps and trajectory length. In other words, the action-side controller does not merely change final scores; it changes how the trajectory is executed. The same interpretation is supported on REVERIE. Here, the baseline and decay-only remain nearly identical in lo-cal reversal behavior, whereas decay+anti-loop lowers the immediate backtrack rate from 8.45% to 5.99% and further shortens the executed trajectory. The directional consistency across R2R and REVERIE is important: although the two benchmarks emphasize different endpoint outcomes, the pro-posed regularizer alters graph-local behavior in the same way on both of them. This result matters from a practical inference perspective. Wasteful reversals consume extra actions, increase runtime, TABLE III BEHAVIORAL DIAGNOSIS ON R2R AND REVERIE V AL UNSEEN .
+
+Methods R2R Val Unseen Backtrack Rate(%) ↓ Avg. Steps ↓ Avg. TL ↓
+
+GridMM (baseline) 2.30 6.02 13.27 decay-only 3.51 6.00 13.29 
+
+decay+anti-loop 2.01 ↓ 5.90 ↓ 12.41 ↓
+
+Methods REVERIE Val Unseen Backtrack Rate(%) ↓ Avg. Steps ↓ Avg. TL ↓
+
+GridMM (baseline) 8.43 8.52 23.18 decay-only 8.45 8.52 23.15 
+
+decay+anti-loop 5.99 ↓ 8.46 ↓ 21.57 ↓ 
+
+> Note: Backtrack rate is the percentage of executed actions that return to the viewpoint from two steps earlier; Avg. Steps counts actions before STOP. The mainline uses only a weak revisit term, so the observed changes are still dominated by immediate backtrack suppression.
+
+and expose the agent to more decision points without nec-essarily adding useful evidence. Reducing such oscillatory transitions therefore improves not only efficiency, but also the interpretability of the executed path. In this sense, the value of anti-loop regularization is best understood as a conservative local controller that makes frozen-backbone in-ference cleaner and more efficient, rather than as a standalone explanation for every endpoint gain. V. C ONCLUSION 
+
+This paper studied how to strengthen memory-based dis-crete VLN under frozen backbones through lightweight test-time control. DART-VLN combines read-side memory decay with action-side anti-loop regularization, improving the practical quality-efficiency trade-off without retraining or architectural redesign. Across R2R and REVERIE, the method shows a consistent pattern: decay-only provides a stable read-side gain, while the final decay+anti-loop config-uration yields the best overall balance of navigation quality, trajectory efficiency, and runtime. Behavioral analysis further shows that the clearest direct effect of anti-loop regulariza-tion is reduced local backtracking and cleaner path execution under frozen inference. These findings should be interpreted within scope. The current study is centered on discrete VLN benchmarks with a GridMM-style backbone, and the most direct evidence for anti-loop regularization lies in local behavior and efficiency rather than in a complete causal explanation of every end-point gain. Even with these limits, the practical message is clear: when a strong memory-based navigator is already available, modest and interpretable test-time control can still improve inference behavior without reopening training. Extending this perspective to other backbones and broader embodied navigation settings is a natural direction for future work. REFERENCES [1] P. Anderson, Q. Wu, D. Teney, J. Bruce, M. Johnson, N. S¨ underhauf, I. Reid, S. Gould, and A. van den Hengel, “Vision-and-language navigation: Interpreting visually-grounded navigation instructions in real environments,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. , 2018, pp. 3674–3683. [2] Y. Zhang, Z. Ma, J. Li, Y. Qiao, Z. Wang, J. Chai, Q. Wu, M. Bansal, and P. Kordjamshidi, “Vision-and-language navigation today and to-morrow: A survey in the era of foundation models,” Trans. Mach. Learn. Res. , 2024. [3] Z. Wang, X. Li, J. Yang, Y. Liu, and S. Jiang, “GridMM: Grid memory map for vision-and-language navigation,” in Proc. IEEE/CVF Int. Conf. Comput. Vis. , 2023, pp. 15 579–15 590. [4] S. Chen, P.-L. Guhur, M. Tapaswi, C. Schmid, and I. Laptev, “Think global, act local: Dual-scale graph transformer for vision-and-language navigation,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. ,2022, pp. 16 537–16 547. [5] D. An, Y. Qi, Y. Li, Y. Huang, L. Wang, T. Tan, and J. Shao, “BEVBert: Topo-metric map pre-training for language-guided navi-gation,” arXiv:2212.04385 , 2022. [6] Y. Hong, Q. Wu, Y. Qi, C. Rodriguez-Opazo, and S. Gould, “VLN-BERT: A recurrent vision-and-language BERT for navigation,” in 
+
+Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. , 2021, pp. 1643–1653. [7] S. Chen, P.-L. Guhur, C. Schmid, and I. Laptev, “History aware multimodal transformer for vision-and-language navigation,” in Adv. Neural Inf. Process. Syst. , 2021. [8] C. Gao, X. Peng, M. Yan, H. Wang, L. Yang, H. Ren, H. Li, and S. Liu, “Adaptive zone-aware hierarchical planner for vision-language navigation,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. ,2023, pp. 14 911–14 920. [9] X. Dong, H. Zhao, J. Gao, H. Li, X. Ma, Y. Zhou, F. Chen, and J. Liu, “SE-VLN: A self-evolving vision-language navigation frame-work based on multimodal large language models,” arXiv:2507.13152 ,2025. [10] J. Gao, R. Liu, and W. Wang, “3D Gaussian map with open-set seman-tic grouping for vision-and-language navigation,” in Proc. IEEE/CVF Int. Conf. Comput. Vis. , 2025, pp. 9252–9262. [11] S. Zhang, Y. Qiao, Q. Wang, Z. Yan, Q. Wu, Z. Wei, and J. Liu, “COSMO: Combination of selective memorization for low-cost vision-and-language navigation,” in Proc. IEEE/CVF Int. Conf. Comput. Vis. ,2025, pp. 5511–5522. [12] J. Krantz, S. Banerjee, W. Zhu, J. Corso, P. Anderson, S. Lee, and J. Thomason, “Iterative vision-and-language navigation,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. , 2023, pp. 14 921– 14 930. [13] C.-Y. Ma, Z. Wu, G. AlRegib, C. Xiong, and Z. Kira, “The regretful agent: Heuristic-aided navigation through progress estimation,” in 
+
+Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. , 2019, pp. 6732–6740. [14] H. Wang, W. Liang, L. Van Gool, and W. Wang, “DREAMWALKER: Mental planning for continuous vision-language navigation,” in Proc. IEEE/CVF Int. Conf. Comput. Vis. , 2023, pp. 10 839–10 849. [15] P. Xu, X. Gong, and Y. Mu, “NavQ: Learning a Q-model for foresighted vision-and-language navigation,” in Proc. IEEE/CVF Int. Conf. Comput. Vis. , 2025, pp. 6327–6341. [16] G. Georgakis, K. Schmeckpeper, K. Wanchoo, S. Dan, E. Miltsakaki, D. Roth, and K. Daniilidis, “Cross-modal map learning for vision and language navigation,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. , 2022, pp. 15 460–15 470. [17] N. Rajabi and J. Kosecka, “TRAVEL: Training-free retrieval and align-ment for vision-and-language navigation,” arXiv:2502.07306 , 2025. [18] H. Ko, S. Kim, G. Oh, J. Yoon, H. Lee, S. Jang, S. Kim, and S. Kim, “Active test-time vision-language navigation,” in Adv. Neural Inf. Process. Syst. , 2025. [19] J. Krantz, E. Wijmans, A. Majumdar, D. Batra, and S. Lee, “Beyond the nav-graph: Vision-and-language navigation in continuous environ-ments,” in Proc. Eur. Conf. Comput. Vis. , 2020, pp. 104–120. [20] Y. Qi, Q. Wu, P. Anderson, X. Wang, W. Y. Wang, C. Shen, and A. van den Hengel, “REVERIE: Remote embodied visual referring expression in real indoor environments,” in Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. , 2020, pp. 9979–9988. [21] P.-L. Guhur, M. Tapaswi, H. Chen, I. Laptev, and C. Schmid, “Airbert: In-domain pretraining for vision-and-language navigation,” in Proc. IEEE/CVF Int. Conf. Comput. Vis. , 2021, pp. 1614–1623. [22] Y. Qiao, Y. Qi, Y. Hong, Z. Yu, P. Wang, and Q. Wu, “HOP+: History-enhanced and order-aware pre-training for vision-and-language navi-gation,” IEEE Trans. Pattern Anal. Mach. Intell. , vol. 45, no. 7, pp. 8524–8537, 2023. [23] Y. Zhao, J. Chen, C. Gao, W. Wang, L. Yang, H. Ren, H. Xia, and S. Liu, “Target-driven structured transformer planner for vision-language navigation,” in Proc. 30th ACM Int. Conf. Multimedia , 2022, pp. 4194–4203.

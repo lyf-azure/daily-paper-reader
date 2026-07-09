@@ -1,0 +1,830 @@
+Title: When Prompts Ignore Structure: Graph-Based Attribute Reasoning for Calibrated VLMs
+
+URL Source: https://arxiv.org/pdf/2607.07395v1
+
+Published Time: Thu, 09 Jul 2026 01:12:21 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+## When Prompts Ignore Structure: Graph-Based Attribute Reasoning for Calibrated VLMs 
+
+Tanay Sodha *1 and Aditya Sharma *1 and Ramya Hebbalaguppe 2 and Vinti Agarwal 1
+
+and Pranav Murthy Yeluripaty 11Department of Computer Science and Information Systems, Birla Institute of Technology and Science, Pilani, India 
+
+> 2
+
+TCS Research, New Delhi, India 
+
+Abstract 
+
+Reliable confidence estimation remains a key limitation of test-time adaptation in vision– language models (VLMs), where prompt tun-ing improves zero-shot accuracy but often de-grades calibration due to entropy-driven over-confidence. Prior approaches mitigate this using LLM-derived class attributes and con-trastive regularization, yet treat attributes inde-pendently, ignoring their relational structure. We propose A RG TCA , which represents (class, attribute) pairs as nodes in a Symbolic Attribute Graph and trains a Graph Attention Network (GAT) via contrastive objectives to produce structurally informed embeddings capturing inter-attribute dependencies. We introduce two attribute selection strate-gies: A RG TCA -D IV for intra-class diversity and A RG TCA -D ISC for inter-class discrimina-tion. Experiments across 9 benchmarks show that A RG TCA -D IV reduces average ECE( ↓)by ∼ 37% over baselines, whereas A RG TCA -DISC consistently performs as the second-best variant, reducing average ECE by ∼ 17% over baselines. These results suggest that model-ing symbolic attribute interactions provides a principled approach for reliable test-time adap-tation in VLMs. 
+
+1 Introduction 
+
+Vision-language models (VLMs) such as CLIP (Radford et al., 2021) have shown strong zero-shot image recognition by aligning images and text in a shared embedding space through large-scale con-trastive pretraining. CLIP performs zero-shot clas-sification of an image by computing cosine sim-ilarities between its visual embedding and class-conditioned text features generated from prompt templates such as “a photo of a {class}” . While ef-fective, such templates are suboptimal and domain-agnostic. Test-time prompt tuning (TPT) (Shu      
+
+> *Equal contribution.
+> TPT (4.59) C-TPT (4.24) TCA (2.56)
+> O-TPT (3.62) A-TPT (2.67) Ours (1.62)
+
+Figure 1: Reliability diagrams on Caltech101 dataset (ViT-B/16, ECE( ↓) in parentheses). TCA is overcon-fident (bars below diagonal); while TPT, C-TPT, O-TPT, and A-TPT overcorrect into underconfidence (bars above diagonal). A RG TCA -D ISC (ours) achieves the closest alignment with the calibration diagonal across all confidence bins. Full results across all datasets are provided in Figure 8 in Appendix. 
+
+et al., 2022) addresses this by optimizing prompt tokens for each test image using only its own aug-mented views, with no labeled data. However, TPTs entropy minimization objective inherently drives the model toward overconfident predictions, producing miscalibrated outputs, quantified by the Expected Calibration Error (ECE) (Guo et al., 2017). It poses a fundamental barrier to deploy-ing VLMs in safety-sensitive applications such as healthcare diagnostics and autonomous systems, where unreliable uncertainty estimates can have serious consequences. A key insight motivating recent work is that cali-bration and accuracy are largely decoupled : differ-ent prompts can achieve nearly identical top-1 accu-racy while exhibiting significantly divergent ECE (Yoon et al., 2024). This implies that the geome-try of the textual feature space , rather than predic-tive accuracy alone, governs how well-calibrated a 1arXiv:2607.07395v1 [cs.CV] 8 Jul 2026 VLMs predictions are. C-TPT (Yoon et al., 2024) and O-TPT(Sharifdeen et al., 2025) exploit this by adding a feature-dispersion loss and angular dis-persion respectively, that spreads class-conditioned text features across the hypersphere. TCA (Heb-balaguppe et al., 2025) complements these geo-metric objectives by adding LLM-extracted visual attributes for semantically grounded prompt ini-tialization, combined with a contrastive intra-class and inter-class regularization over the resulting text embeddings, achieving strong calibration. 
+
+Structural limitations of TCA. Despite strong calibration performance, TCA exhibits two struc-tural failures that directly degrade the geometry of class-conditioned text features. First, attributes are selected as a flat set based on cosine-similarity with-out any relational context: on texture-rich datasets such as DTD, attributes such as rough , bumpy ,and grainy are nearly collinear in CLIP’s embed-ding space, so top-M ′ selection clusters attribute embeddings tightly and undermines the separa-tion that calibration requires. Second, attributes shared ubiquitously across different classes—such as mammal across leopard , dolphin , and beaver in Caltech101—carry diminished discriminative ca-pacity, leaving their embeddings proximate across class boundaries. Both the failure modes are invisi-ble to TCA’s selection procedure, which operates purely on similarity based ordering of LLM gen-erated attributes without any notion of relational geometry between attributes. We propose A RG TCA (Attribute Relation Graph for Test-time Calibration Adaptation), a graph-based framework that addresses both structural fail-ures through a Symbolic Attribute Graph (SAG) constructed by representing (class, attribute) pairs as nodes, trained offline via a Graph Attention Net-work with no task supervision. Two selection strate-gies derived from the graph — A RG TCA -D IV for intra-class diversity and A RG TCA -D ISC for inter-class discrimination. Both strategies operate at zero additional test-time cost — Note: the graph is trained once offline and selection is performed before tuning begins. We validate A RG TCA across nine benchmark datasets spanning fine-grained recognition, tex-ture classification, and domain-shifted imagery and demonstrate empirically that graph-structured re-lational reasoning over attributes is a key driver of calibration improvement — as shown in Fig-ure 1, A RG TCA produces reliability diagrams most closely aligned with the perfect calibration diag-onal, outperforming existing prompt-tuning base-lines. Our key contributions are: • We identify two structural failures in TCA: near-synonymous intra-class attributes that cluster on the hypersphere, and ubiquitous cross-class attributes that carry no discrimina-tive capacity yet receive no suppression. We construct a Symbolic Attribute Graph (SAG) from class specific attributes and train a Graph Attention Network via supervised contrastive learning to produce relational embeddings capturing intra-class complementarity and cross-class redundancy. • We introduce two selection strategies from graph-refined embeddings: ARG TCA -D IV ,maximising intra-class semantic complemen-tarity; and A RG TCA -D ISC , maximising dis-tance from all other-class embeddings. Both strategies operate at zero additional test-time cost and are evaluated across nine benchmarks using CLIP ViT-B/16. 
+
+2 Related Work 
+
+2.1 Test-Time Adaptation of VLMs 
+
+Foundation models such as CLIP (Radford et al., 2021; Jia et al., 2021) enable zero-shot classifica-tion by aligning image and text in a shared embed-ding space. While learned prompt methods like CoOp (Zhou et al., 2022b) and CoCoOp (Zhou et al., 2022a) improve over hard prompts, they re-quire labeled data, limiting zero-shot applicability. TPT (Shu et al., 2022) removes this constraint by adapting prompts via entropy minimization over augmented views of a single test image, extended further by DiffTPT (Feng et al., 2023) and Promp-tAlign (Mirza et al., 2023) through improved aug-mentation and distribution alignment. However, entropy minimization drives overconfident predic-tions across all TPT-family methods, significantly degrading calibration relative to the zero-shot base-line(Yoon et al., 2024). 
+
+2.2 Calibration of Vision-Language Models 
+
+Post-hoc methods such as temperature scaling (Guo et al., 2017) and Platt scaling (Platt, 1999) require labeled validation data, making them impractical at test time. C-TPT (Yoon et al., 2024) estab-lishes that TPT degrades calibration, and that well-calibrated prompts exhibit higher Average Text Fea-2ture Dispersion (ATFD). O-TPT (Sharifdeen et al., 2025) refines this, showing that ATFD displaces the feature centroid without ensuring pairwise angular separation — the operative quantity for calibration on the unit hypersphere. A-TPT (Ahamed et al., 2026) addresses a further degeneracy in O-TPT when N > |D| (N : #datapoints, D: feature di-mensions), enforcing pairwise angular separation without dimensional constraints. TCA (Hebbal-aguppe et al., 2025) initializes prompts with LLM-extracted visual attributes and applies intra- and inter-class contrastive regularization, but treats at-tributes as a flat set ignoring relationships — a gap our work addresses. 
+
+2.3 Graph-Based VLM Adaptation 
+
+GNNs (Kipf and Welling, 2017; Veliˇ ckovi´ c et al., 2018) have proven effective for learning over rela-tional data. In VLM adaptation, GraphAdapter (Li et al., 2023) uses dual knowledge graphs for su-pervised few-shot transfer, HGCLIP (Zheng et al., 2024) encodes label taxonomies for hierarchical classification, and VCGPrompt (Wang et al., 2026) builds visual concept graphs for prompt learning. These works demonstrate that relational structure over the label space improves representation qual-ity in VLMs, however are designed to operate in supervised settings, not for zero-shot calibration. In contrast, A RG TCA utilizes symbolic graph edges in a fully label-free setting, specifically targeting calibration improvement. ARG TCA occupies the intersection of all three research threads retaining TCA’s semantically grounded prompt initialization, corrects its flat-set attribute selection through a Symbolic Attribute Graph, and directly optimizes the geometric prop-erties of text feature space that govern calibration — none of the prior works simultaneously achieves. 
+
+3 Methodology 
+
+ARG TCA replaces TCA’s (Hebbalaguppe et al., 2025) similarity-based attribute selection with a graph-informed selection via two phases. In 
+
+Phase 1 , a Symbolic Attribute Graph (SAG) is constructed over all (class, attribute ) pairs, with intra-class edges ( Eintra ) encoding within-class at-tribute relations and inter-class edges ( Einter ) en-coding cross-class sharing. A Graph Attention Network (GAT) is trained with a supervised con-trastive objective (Eq. 7), producing relational em-beddings that capture intra -class complementarity and inter -class redundancy. These drive two prin-cipled selection strategies: A RG TCA -D IV , which selects the most semantically complementary at-tribute pair per class, spanning the widest semantic range for diverse prompt adaptation signals; and ARG TCA -D ISC , which scores each attribute by its mean angular distance from all other-class nodes and selects the top-M ′ per class — these maxi-mally class-specific descriptors strengthen TCA’s inter-class regularizer. Figure 2 gives an overview of the proposed graph-informed attribute selection. In Phase 2 , selected attributes initialize the stan-dard TCA test-time tuning procedure without mod-ification. The graph’s contribution is purely struc-tural: deciding which attributes appear, not how they are represented. Moreover, graph training and attribute selection are performed once offline be-fore testing, incurring no additional test-time cost. 
+
+3.1 Preliminaries Notation Let C = {c1, . . . , c K } be a set of K
+
+class labels and Ak = {a1, . . . , a M } be the set of M LLM-generated visual attributes for class k,giving N = K × M total ( ck, a j ) pairs. A full list of notations is provided in Table 5 in Appendix. 
+
+TCA background TCA (Hebbalaguppe et al., 2025) initializes soft prompts using visual at-tributes and defines per-class text features via attribute-conditioned prompt embeddings. For each class k and each of its M ′ selected attributes, a prompt is assembled as 
+
+tk,m = p ⊕ am ⊕ ck, (1) where p is the learnable soft context (initialised to "a photo of a" ), and am, ck are the token embeddings of the attribute and class name strings, respectively. The text feature is fk,m = g(tk,m ),where g(·) denotes the frozen CLIP text encoder. Class probabilities combine all attribute prompts via a bag-of-attributes softmax aggregation:             
+
+> p(y=k|x) =
+> M′
+> X
+> m=1
+> exp  fimg (x)·fk,m /τ 
+> KX
+> k′=1
+> M′
+> X
+> m=1
+> exp  fimg (x)·fk′,m /τ 
+> (2)
+
+where τ is CLIP’s learned logit scale. The test-time objective minimizes: 
+
+LTCA = LTPT − α Linter + β Lintra (3) 3Eq:          
+
+> 4
+> ARG-TCA_DISC: inter class discrimination
+> ARG-TCA_DIV: intra class diversity
+> Eq:
+> Attribute generation from LLM
+> Class - Leopard
+> Attributes: Feline, mammal ,Carnivore, predator,
+> fur , …
+> Class - Dolphin
+> Attributes – sea, mammal ,aquatic, ocean,
+> water , …
+> Class - Beaver
+> Attributes: rodent, water ,
+> mammal , construct,
+> fur , …
+> 2
+> Eq:
+> SAG-Symbolic Attribute graph
+> feline
+> mammal
+> aquatic ocean sea rodent carnivore predator
+> fur mammal water
+> construct
+> water mammal fur
+> Beaver Leopard Dolphin
+> 13
+> Select M' out of M attributes per class
+> GAT propagation
+> GAT
+> 5Selected attributes §4 §7 §6 §8 §9
+
+Figure 2: Overview of A RG TCA attribute selection pipeline. ❶ An LLM generates M candidate attributes per class. ❷ These are used to construct the Symbolic Attribute Graph (SAG) with intra-class ( Eintra ) and inter-class (Einter ) edges. ❸ A Graph Attention Network (GAT) is trained via supervised contrastive loss ( LSupCon ) to propagate structural relationships across the SAG, producing attribute embeddings. ❹ Two selection criteria — A RG TCA -D IV 
+
+(intra-class diversity) and A RG TCA -D ISC (inter-class discrimination) — select the most informative M ′ attributes per class. ❺ The final selected attributes form the matrix A ∈ RM ′×K , used for downstream prompt tuning. 
+
+with α weights how aggressively class centroids μk
+
+are pushed away from the global centroid μ, and β
+
+weights how tightly each class’s attribute embed-dings fk,m are pulled toward their class centroid 
+
+μk. LTPT is the entropy of the average prediction over the ⌊B · psel ⌋ most confident of B augmented views. Linter = 1
+
+K
+
+P
+
+k ∥μk − μ∥2 is the mean dis-tance of class centroids μk = 1
+
+M ′
+
+P
+
+m fk,m from the global centroid μ; maximizing it spreads classes apart. Lintra = 1
+
+K
+
+P
+
+k 1
+
+M ′
+
+P
+
+m ∥fk,m − μk∥2 is minimized to make each class’s attribute prompts consistent. Only p is updated; all other parameters are frozen. 
+
+3.2 Phase 1 — Symbolic Attribute Graph and GAT Training 3.2.1 Node Initialization 
+
+We adopt the M visual attributes per class provided by Hebbalaguppe et al. (2025), generated offline via GPT-4 prompting across all nine benchmark datasets. Specifically, for each class ck, an LLM is prompted with the class name to produce a list of descriptive visual attributes am, which are subse-quently ranked in descending order of relevance by cosine similarity between the attribute and class name embeddings (Hebbalaguppe et al., 2025). Each class-attribute pair ( ck, aj ) is represented as a graph node, initialized with ℓ2-normalized EOS hidden state obtained by encoding the phrase “ a aj
+
+of a ck” through frozen CLIP text encoder, g(·):
+
+h(0) 
+
+i = g("a aj of a ck") ∈ Rd (4) 
+
+3.2.2 Symbolic Attribute Graph (S AG )
+
+We define the edge set E via a symbolic rule over the node vocabulary: 
+
+E =
+
+n
+
+(i, j ) i̸ = j and ci = cj
+
+| {z } 
+
+Eintra 
+
+or ai = aj
+
+| {z }
+
+Einter 
+
+o
+
+(5) where both directions are included and self-loops are omitted. In equation 5 Eintra connects all at-tribute nodes belonging to the same class ( ci = cj ), enabling the GAT to jointly aggregate every at-tribute perspective of a class; Einter connects nodes that sharing a common attribute token across differ-ent classes — for instance, mammal links leopard ,
+
+dolphin , and beaver in Caltech101 — allowing the GAT to propagate how the same descriptor is con-textualized differently across class neighborhoods. For K classes each with M attributes, |E intra | =
+
+K · M · (M − 1) is guaranteed regardless of the data distribution. 
+
+3.2.3 GAT & hybrid Objective 
+
+We use GAT to propagate feature information across Eintra and Einter edges so that each attribute node aggregates both the complementary perspec-tives of its own class and the cross-class context of any shared attribute, producing node embed-dings h(L) where same-class attributes are pulled into a compact, coherent cluster while cross-class attribute representations are pushed apart. Con-cretely, at layer l, the updated embedding of node i
+
+is computed as: 
+
+hl
+
+i = ELU 
+
+ Hh=1 
+
+X
+
+j∈N (i)
+
+αhj · Whhl−1
+
+j
+
+ (6) 4where ∥ denotes head-wise concatenation over H
+
+attention heads, N (i) is the set of neighbors of node i under E, and W(l) 
+
+> h
+
+∈ Rd/H ×d is the head-specific linear projection at layer l. The attention coefficient α(l,h ) 
+
+> ji
+
+measures the relative importance of neighbor j to node i under head h, and ELU 
+
+induces non-linearity. Full architectural details in-cluding the attention coefficient computation are given in section B of appendix. 
+
+GAT Training Objective The GAT is trained using supervised contrastive loss (Khosla et al., 2020) where same-class (ck, a j ) nodes form posi-tives, and all inter-class nodes form negatives.           
+
+> LSupCon =1
+> |A|
+> X
+> i∈A
+> −1
+> |P(i)|
+> X
+> p∈P(i)
+> log exp
+> ˜h⊤
+> i·˜hp/τ
+> X
+> j̸=i
+> exp
+> ˜h⊤
+> i·˜hj/τ
+> 
+> (7)
+
+where ˜h(L) = h(L)/∥h(L)∥2 and A = nodes that have at least one positive. This trains the GAT to produce class-cohesive representations in h(L)
+
+space while discriminating against all other classes. 
+
+3.3 Attribute Selection (Post training) 
+
+After GAT training, the learned h(L) is used to select M ′ of the M attributes per class using one of two criteria. Both strategies operate entirely offline at zero test-time cost. 
+
+ARG TCA -D IV — Intra-class diversity For each class ck ∈ C, select the pair (aki , a kj ) with the minimum cosine similarity in the graph-refined embedding space — i.e., the most semantically complementary pair: 
+
+(aki , a kj ) = arg min 
+
+> i̸=j∈Ik
+
+˜h(L) 
+
+> i
+
+· ˜h(L) 
+
+> j
+
+. (8) 
+
+ARG TCA -D ISC : For each node aki in class ck,we compute discriminability score measuring its mean angular distance from all other-class nodes: score (aki ) = 1
+
+| ¯Ωk|
+
+X
+
+> j / ∈Ωk
+
+
+
+1 − cos  ˜h(L) 
+
+> i
+
+, ˜h(L)
+
+> j
+
+
+
+,
+
+(9) where Ωk denotes the global node indices for class 
+
+k and ¯Ωk all other-class indices. The top M ′ at-tributes by score are selected per class. 
+
+3.4 Phase 2 — Test-Time Tuning Prompt construction For each ck and its M ′
+
+attributes selected in Phase 1, prompts are assem-bled via Eq. 1, with am and ck as frozen CLIP token embeddings. The per-class text feature is 
+
+fk,m = g(tk,m ) and class probabilities follow Eq. 2. The full positional breakdown is given in Table 4.           
+
+> prompt tk,m = [SOS]
+> | {z }
+> pos 0
+> p
+> |{z}
+> pos 1-nctx
+> akm,cls tokens , . . .
+> |{z }
+> pos nctx +1 ··· 76
+> (10)
+
+Test-time objective & inference For each test image, the top ⌊B · psel ⌋ most confident of B aug-mented views are selected and a single AdamW step minimizes LTCA (Eq. 3) on p. Final prediction uses the non-augmented image with the updated p,which is reset before each new test image. Figure 7 in appendix illustrates the prompt-tuning process. 
+
+4 Experimental Setup 
+
+4.1 Datasets and Baselines 
+
+We evaluate on nine benchmarks datasets, using ViT-B/16 as CLIP backbone and following the eval-uation protocol of baselines (He et al., 2016; Rad-ford et al., 2021). Dataset details are provided in section A in appendix. Furthermore, we compare our proposed approach against recent, state-of-the-art approaches: • TCA (Hebbalaguppe et al., 2025): The direct predecessor, which initializes prompts with LLM-generated visual attributes and applies contrastive intra- and inter-class regulariza-tion. Our method builds on and improves upon TCA’s attribute selection procedure. • C-TPT (Yoon et al., 2024): Adds a text fea-ture dispersion loss (ATFD) to TPT (Shu et al., 2022) to improve calibration. • O-TPT (Sharifdeen et al., 2025): Replaces ATFD with pairwise angular separation be-tween class centroids. • A-TPT (Ahamed et al., 2026): Fixes O-TPT’s degeneracy when classes exceed embedding dimension. All baselines are re-evaluated under identical hy-perparameters tuned on the Caltech101 validation set, following the protocol of TCA (Hebbalaguppe et al. (2025)). 
+
+4.2 Implementation Details 
+
+All experiments are done on a single A100 80GB GPU. The CLIP backbone is fully frozen through-out both phases. 5Phase 1 — Offline Graph Training. Each dataset’s attribute graph is constructed from Nattr =10 LLM-generated attributes per class (from Heb-balaguppe et al. (2025)), giving K×10 graph nodes. The Graph Attention Network (AttributeGAT; 2 layers, 4 heads, 512-dimensional node features) is trained for 100 epochs with supervised contrastive loss (Eq. 7), temperature τ = 0 .07 , and the Adam optimizer with learning rate 10 −3. Phase-1 training is done offline and completes in under two minutes per dataset. 
+
+Phase 2 — Test-Time Prompt Tuning. We fol-low the standard TCA evaluation protocol: soft context initialised to “a photo of a” (nctx = 4 ), 64 augmented views per test image with the top 10% selected by entropy, and a single gradient step per image with batch size 64. Regularization weights: ViT-B/16 uses α = 10 , β = 35 ; M ′=2 attributes per class are selected from the graph-refined em-beddings via either the diversity (A RG TCA -D IV )or discriminability (A RG TCA -D ISC ) criterion. 
+
+Metrics We report top-1 accuracy (Acc, %, ↑)and Expected Calibration Error (ECE, %, ↓) com-puted with 20 equal-width bins following Hebbal-aguppe et al. (2025). Lower ECE indicates better-calibrated predictions. 
+
+5 Results 
+
+5.1 Main Results 
+
+Table 1 shows that A RG TCA -D IV achieves the best average ECE of 4.45% , reducing miscalibra-tion by 26 .7% , 31 .5% , 42 .4% , and 48 .0% over C-TPT, TCA, O-TPT, and A-TPT respectively, while improving average accuracy simultaneously. ARG TCA -D ISC achieves the highest average accu-racy of 64 .68% , with an ECE of 5.90% — a 2.8% ,
+
+9.2% , 23 .7% , and 31 .0% reduction over C-TPT, TCA, O-TPT, and A-TPT respectively. Notably, A-TPT achieves competitive accuracy ( 64 .84% )but at a significantly higher calibration cost (ECE: 
+
+8.55% ). A RG TCA -D ISC breaks this trade-off — matching A-TPT’s accuracy within 0.2% while re-ducing its ECE by 31% , confirming that graph-structured attribute reasoning provides consistent calibration gains. 
+
+5.2 Calibration Quality: Confidence Distributions and Reliability 
+
+The confidence bin plots (Figure 4) reveal that TCA, O-TPT, and A-TPT accumulate incorrect 2.2     
+
+> 2.6
+> 3.0
+> 3.5
+> 3.9
+> 1.9
+> 2.4
+> 2.9
+> 3.4
+> 3.9
+> 1.7 2.1 2.4 2.8 3.1
+> 4.1
+> 5.9
+> 7.7
+> 9.4
+> 11.2
+> 1.8
+> 2.2
+> 2.6
+> 3.0
+> 3.4
+> 6.0
+> 8.2
+> 10.4
+> 12.6
+> 14.7
+> 6.4
+> 10.2
+> 13.9
+> 17.7
+> 21.4
+> 12.2
+> 14.8
+> 17.4
+> 20.0
+> 22.6
+> 3.4
+> 4.2
+> 5.0
+> 5.8
+> 6.6
+> Caltech101
+> Pets
+> Cars
+> Flower
+> Food101 Aircraft
+> DTD
+> EuroSAT
+> UCF101
+> ECE Comparison (lower is better)
+> TCA O-TPT A-TPT ARGTCA-DIV
+
+Figure 3: Radar plot comparing ECE (lower is better, smaller area is better) of TCA, O-TPT, A-TPT, and ARG TCA -D IV (Ours) across nine datasets (ViT-B/16). ARG TCA -D IV consistently occupies the innermost re-gion, with the largest gains on Aircraft, Flower, and EuroSAT. 
+
+(red) predictions at high confidence levels, indi-cating systematic overconfidence. A RG TCA -D ISC 
+
+achieves the lowest ECE of 1.62% at 93 .2% accu-racy, with incorrect predictions concentrated at low confidence and correct predictions (green) dom-inating the high-confidence region. By contrast, O-TPT (ECE: 3.61% ) and TCA (ECE: 2.56% ) ex-hibit red-green mixing in mid-confidence bins (2– 4), while A-TPT (ECE: 2.67% ) partially improves but still misclassifies samples at low confidence. The radar plot (Figure 3) confirms this trend across all nine benchmarks: A RG TCA consistently occupies the innermost region, with gains most pro-nounced on Aircraft (ECE: 1.21% vs. 8.19% for A-TPT), Food101 ( 1.75% vs. 2.02% for A-TPT), and Flower ( 2.88% vs. 10 .38% for A-TPT). Relia-bility diagrams (Figures 1, 8) further corroborate this, with A RG TCA showing the closest alignment to the calibration diagonal — particularly in high-confidence bins (0.8–1.0) — confirming that graph-based attribute selection suppresses overconfidence without inducing underconfidence. 
+
+5.3 Accuracy–Calibration Trade-off 
+
+The two selection strategies encode complementary objectives. A RG TCA -D IV selects the most seman-tically complementary attribute pair per class, max-imizing angular spread in h(L) space. The resulting diverse prompt initialization provides strong gradi-6Method 
+
+> Metric
+> Caltech
+> Pets
+> Cars
+> Flower
+> Food101
+> Aircraft
+> DTD
+> EuroSAT
+> UCF101
+> Average
+
+Pre-trained Backbone: CLIP Vit-B/16 | Embedding dimension: 1024-d 
+
+TPT (NeurIPS’22) Acc. 93.83 87.08 66.32 69.31 84.70 23.61 46.70 42.79 67.27 64.62 ECE 4.59 5.77 5.25 13.27 4.05 16.48 21.35 21.49 13.01 11.70 C-TPT (ICLR’24) Acc. 93.35 84.14 65.45 69.79 83.28 23.85 46.04 27.8 59.7 61.49 ECE 4.24 2.77 1.94 5.21 3.77 4.38 12.27 15.16 3.89 6.07 TCA (ECML’25) Acc. 93.82 90.51 65.92 69.18 69.18 24.96 44.73 45.52 66.9 63.31 ECE 2.56 6.3 7.85 3.67 5.28 4.52 11.26 11.35 5.25 6.50 O-TPT (CVPR’25) Acc. 93.67 88.55 65.65 69.96 83.52 23.46 46.87 42.85 66.90 64.60 ECE 3.62 1.92 1.80 7.15 3.13 7.75 19.75 20.92 3.56 7.73 A-TPT (ICLR’26) Acc. 93.75 88.49 66.44 69.83 83.57 23.34 47.22 43.29 67.64 64.84 ECE 2.67 2.23 2.54 10.38 2.20 13.64 19.81 17.53 6.11 8.55 ARG TCA -D IV (Ours) Acc. 92.82 89.48 65.07 70.36 83.64 24.69 47.34 32.84 69.63 63.99 ECE 2.52 3.44 2.75 2.74 1.75 4.83 3.17 15.83 3.05 4.45 
+
+ARG TCA -D ISC (ours) Acc. 93.19 88.91 66.47 69.59 83.85 25.05 46.63 39.53 68.70 64.68 ECE 1.62 3.37 4.29 3.57 2.06 4.25 6.36 19.81 3.81 5.90 
+
+Table 1: Top-1 accuracy (Acc.%, ↑) and Expected Calibration Error (ECE, %, ↓) on nine benchmarks on ViT-B/16. 
+
+red : best per dataset and metric; orange: second best. 
+
+ent signals for both Lintra and Linter , driving higher accuracy alongside well-calibrated text distribu-tions. ARG TCA -D ISC instead targets attributes maximally distant from other-class embeddings, initializing prompts with high inter-class separa-tion and more conservative updates — effective on datasets with severe inter-class confusion (e.g., Caltech101, Aircraft) but less consistent across all nine benchmarks. 
+
+Recommendation: ARG TCA -D IV for broad cross-dataset calibration; A RG TCA -D ISC when inter-class confusion dominates. 
+
+(a) TCA (b) O-TPT 
+
+(c) A-TPT (d) A RG TCA (Ours) 
+
+Figure 4: Confidence bin plots on Caltech101 (ViT-B/16). Green/red indicate correct/incorrect predictions. ARG TCA -D ISC achieves the lowest ECE with the clean-est separation between correct and incorrect predictions across confidence bins. 5 10 20 40           
+
+> 3
+> 4
+> 5
+> 6
+> 7
+> 8
+> 9
+> ECE (%)
+> ARGTCA-DIV ECE ( )
+> Caltech101
+> OxfordPets
+> DTD
+> = 10 (default)
+> 510 20 40
+> 2
+> 3
+> 4
+> 5
+> 6
+> 7
+> 8
+> ECE (%)
+> ARGTCA-DISC ECE ( )
+> ECE Sensitivity: sweep ( = 35 fixed)
+
+Figure 5: ECE vs. α (inter-class regularization weight) on Caltech101, OxfordPets, and DTD ( β=35 fixed). 15 25 35 50           
+
+> 2.5
+> 3.0
+> 3.5
+> 4.0
+> 4.5
+> 5.0
+> 5.5
+> 6.0
+> ECE (%)
+> ARGTCA-DIV ECE ( )
+> Caltech101
+> OxfordPets
+> DTD
+> = 35 (default)
+> 15 25 35 50
+> 2
+> 3
+> 4
+> 5
+> 6
+> 7
+> 8
+> 9
+> ECE (%)
+> ARGTCA-DISC ECE ( )
+> ECE Sensitivity: sweep ( = 10 fixed)
+
+Figure 6: ECE vs. β (intra-class regularization weight) on Caltech101, OxfordPets, and DTD ( α=10 fixed). 
+
+5.4 Ablation Studies 
+
+All ablations use ViT-B/16 on Caltech101, Ox-fordPets, and DTD. We ablate three components of A RG TCA : (i) edge structure — S AG trained with E=∅, removing message passing while re-taining contrastive training and Div/Disc selec-tion; (ii) GAT training — Div/Disc applied di-rectly to raw CLIP EOS embeddings h(0) , skip-ping Phase 1 entirely; and (iii) selection crite-
+
+7Variant Sel. Caltech101 OxfordPets DTD Acc ECE Acc ECE Acc ECE ARG TCA (Full) Div 92.82 2.52 89.48 3.44 47.34 3.17 
+
+Disc 93.19 1.62 88.91 3.37 46.63 6.36 (i) Zero edges Div 93.18 2.36 89.32 3.84 45.04 4.91 Disc 93.51 1.74 90.00 3.50 45.74 5.31 (ii) Raw EOS Div 92.21 2.73 88.74 3.87 46.81 5.65 Disc 93.39 2.60 88.99 3.71 45.98 8.95 (iii) Random sel. Div 93.10 2.53 88.63 3.44 45.92 5.16 Disc 92.25 2.43 88.50 3.55 44.27 6.33 
+
+Table 2: Ablation study on Caltech101, OxfordPets, and DTD (ViT-B/16). Acc (%, ↑) / ECE (%, ↓). red : best per column; orange: second best. Div = A RG TCA -D IV ;Disc = A RG TCA -D ISC .
+
+rion — Phase 1 run in full but with random at-tribute selection ( M ′=2 , seed 42). We addition-ally sweep α ∈ { 5, 10 , 20 , 40 } (β=35 fixed) and 
+
+β ∈ { 15 , 25 , 35 , 50 } (α=10 fixed). A detailed per-ablation description and hyperparameter sweep figures are in shown Appendix C. The ablation results (Table 2) confirm the con-tribution of each component. Removing edge structure (i) degrades ECE on DTD for both Div (3.17 →4.91 ) and Disc ( 6.36 →4.91 ). Skipping GAT training entirely (ii) causes the largest degra-dation: DTD ECE rises to 5.65 (Div) and 8.95 
+
+(Disc), confirming that relational contrastive train-ing is critical for texture-heavy datasets. Random selection (iii) degrades DTD Div ECE from 3.17 to 
+
+5.16 with minimal accuracy impact, directly isolat-ing the geometric Div/Disc criteria as the operative calibration mechanism.                                                  
+
+> Dataset Class TCA (top-2) ARG TCA -D IV ARG TCA -D ISC
+> Caltech101
+> airplane aircraft, travel transportation, alti-tude jet, airline camera image, digital digital, vintage dslr, digital chair design, chair design, director’s elegant, chair face images, human natural, adults emotion, casual motorbike motorbike, pillion seat, suspension suspension, motor-bike
+> OxfordPets
+> Abyssinian Abyssinian, cats restful, observant cats, feline Boxer Dog, Boxer Athletic, Friendly Boxer, Pet Maine Coon Feline, Cat Tabby, Fluffy Kitten, Coon Persian Adorable, Persian Adorable, Lying Persian, Adorable Shiba Inu Shiba, Dog Cute, Foxy Inu, Shiba
+> DTD
+> banded design, casual material, colorful casual, colorful bumpy uneven, unequal unequal, geometric knobby, indented crystalline natural, crystals natural, glittering shimmering, crys-tals dotted variation, design variation, fashion dots, stylized woven interwoven, crafts-manship material, organic handwoven, crafts-manship
+
+Table 3: Representative attribute selection per class across three datasets. (A RG TCA -D IV , A RG TCA -D ISC )avoid near-synonymous descriptors that cluster tightly in CLIP embedding space, unlike TCA. 
+
+Attributes selected by TCA vs. A RG TCA . TCA selects top-M ′ attributes by cosine similarity to the class name, surfacing near-synonymous descriptors that cluster tightly on the hypersphere. A RG TCA -DIV selects the maximally complementary pair in 
+
+h(L) space; A RG TCA -D ISC selects the pair most distant from all other-class embeddings. Per-class examples are in Table 3. 
+
+Hyperparameter sensitivity (α, β). Both weights are stable across α ∈ { 5, 10 , 20 , 40 } and 
+
+β ∈ { 15 , 25 , 35 , 50 }: ECE varies by at most ∼2% 
+
+across the full sweep, with the ViT-B/16 defaults (α=10 , β=35 ) lying in the stable plateau (see Fig-ures 5–6). Full ECE sweep for both selection strate-gies are provided in Appendix C. 
+
+6 Conclusion 
+
+We present A RG TCA , a test-time calibration frame-work for CLIP that replaces flat attribute selec-tion in TCA with graph-relational reasoning. A GAT trained via supervised contrastive loss over the Symbolic Attribute Graph (S AG ) produces at-tribute embeddings encoding intra-class diversity and inter-class discriminability, giving rise to two selection criteria: A RG TCA -D IV and A RG TCA -DISC . Across nine benchmarks, A RG TCA -D IV 
+
+achieves the lowest average ECE ( 4.45 ), reducing miscalibration by up to 48% . Ablations confirm that edge topology, contrastive training, and ge-ometric selection each contribute independently. Future works include a unified selection objec-tive jointly optimiing diversity and discriminability, and cross-dataset graph transfer to remove the per-dataset offline build requirement. 
+
+Limitations 
+
+LLM attribute quality. The method inherits TCA’s dependence on LLM-generated attribute quality. Domains where LLMs produce generic or noisy attributes (e.g., satellite imagery) remain challenging. Richer, domain-specific attribute gen-eration strategies may be needed for such cases. 
+
+Accuracy–calibration tradeoff. ARG TCA -D IV 
+
+and A RG TCA -D ISC are complementary but not jointly optimal: across benchmarks, A RG TCA -D IV 
+
+tends to improve accuracy while A RG TCA -D ISC 
+
+tends to reduce ECE, and no single variant domi-nates on both metrics simultaneously. Practitioners must choose a selection strategy based on deploy-ment priority, which limits plug-and-play usability 8without prior knowledge of the target domain. 
+
+Dataset-specific graph. The S AG and GAT are trained independently per dataset, so applying ARG TCA to a new benchmark requires re-running Phase 1. The learned graph structure does not trans-fer across datasets or domains, and Phase 1 cannot be run when the class vocabulary is unavailable at build time, constraining applicability in fully zero-shot settings. 
+
+References 
+
+Shihab Aaqil Ahamed, Udaya S. K. P. Miriya Thanthrige, Ranga Rodrigo, and Muhammad Haris Khan. 2026. A-tpt: Angular diversity calibration properties for test-time prompt tuning of vision-language models. Lukas Bossard, Matthieu Guillaumin, and Luc Van Gool. 2014. Food-101 – mining discriminative components with random forests. In Proceedings of the 13th European Conference on Computer Vision , ECCV, pages 446–461. Mircea Cimpoi, Subhransu Maji, Iasonas Kokkinos, Sammy Mohamed, and Andrea Vedaldi. 2014. De-scribing textures in the wild. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pat-tern Recognition , pages 3606–3613. Li Fei-Fei, Rob Fergus, and Pietro Perona. 2004. Learn-ing generative visual models from few training exam-ples. In Proceedings of the CVPR 2004 Workshop on Generative-Model Based Vision .Chun-Mei Feng, Kai Yu, Yong Liu, Salman Khan, and Wangmeng Zhong. 2023. Diverse data augmenta-tion with diffusions for effective test-time prompt tuning. In Proceedings of the IEEE/CVF Interna-tional Conference on Computer Vision , ICCV, pages 2704–2714. Chuan Guo, Geoff Pleiss, Yu Sun, and Kilian Q. Wein-berger. 2017. On calibration of modern neural net-works. In Proceedings of the 34th International Con-ference on Machine Learning , ICML, pages 1321– 1330. Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. 2016. Deep residual learning for image recog-nition. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 770–778. Ramya Hebbalaguppe, Tamoghno Kandar, Abhinav Nagpal, and Chetan Arora. 2025. Prompting without panic: Attribute-aware, zero-shot, test-time calibra-tion. arXiv preprint arXiv:2506.22819 .Patrick Helber, Benjamin Bischke, Andreas Dengel, and Damian Borth. 2019. EuroSAT: A novel dataset and deep learning benchmark for land use and land cover classification. IEEE Journal of Selected Topics in Applied Earth Observations and Remote Sensing ,12(7):2217–2226. Chao Jia, Yinfei Yang, Ye Xia, Yi-Ting Chen, Zarana Parekh, Hieu Pham, Quoc V. Le, Yunhsuan Sung, Zhen Li, and Tom Duerig. 2021. Scaling up vi-sual and vision-language representation learning with noisy text supervision. In Proceedings of the 38th In-ternational Conference on Machine Learning , ICML. Prannay Khosla, Yonglong Tian, Huiwen Wang, Chen Liu, Jack Valmadre, Chen Tian, Mohammad Norouzi, and 1 others. 2020. Supervised contrastive learning. 
+
+9In Advances in Neural Information Processing Sys-tems , volume 33 of NeurIPS , pages 18661–18673. Thomas N. Kipf and Max Welling. 2017. Semi-supervised classification with graph convolutional networks. In International Conference on Learning Representations , ICLR. Jonathan Krause, Michael Stark, Jia Deng, and Li Fei-Fei. 2013. 3D object representations for fine-grained categorization. In ICCV Workshop on 3D Represen-tation and Recognition .Xin Li, Wenxuan Lian, Zhixin Lu, Jingwen Bao, Ji-aming Liu, Junliang Li, Jiaxin Lan, and Lingling Zhu. 2023. GraphAdapter: Tuning vision-language models with dual knowledge graph. In Advances in Neural Information Processing Systems , NeurIPS. Subhransu Maji, Esa Rahtu, Juho Kannala, Matthew B. Blaschko, and Andrea Vedaldi. 2013. Fine-grained visual classification of aircraft. CoRR ,abs/1306.5151. Muhammad Uzair Mirza, Fahad Shahbaz Khalid, Fawad Siddiqui, and Salman Khan. 2023. Lafter: Label-free test-time adaptation with language feedback for robust visual prompt tuning. In Advances in Neural Information Processing Systems , NeurIPS. Maria-Elena Nilsback and Andrew Zisserman. 2008. Automated flower classification over a large number of classes. In Indian Conference on Computer Vision, Graphics and Image Processing .Omkar M. Parkhi, Andrea Vedaldi, Andrew Zisserman, and C. V. Jawahar. 2012. Cats and dogs. In Pro-ceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 3498–3505. John C. Platt. 1999. Probabilistic outputs for support vector machines and comparisons to regularized like-lihood methods. In Advances in Large Margin Clas-sifiers , pages 61–74. MIT Press. Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sas-try, Amanda Askell, Pamela Mishkin, Jack Clark, Gretchen Krueger, and Ilya Sutskever. 2021. Learn-ing transferable visual models from natural language supervision. In Proceedings of the 38th International Conference on Machine Learning , ICML, pages 8748–8763. PMLR. A. Sharifdeen and 1 others. 2025. O-TPT: Orthogonality-regularized test-time prompt tuning for zero-shot generalization in vision-language mod-els. In International Conference on Learning Repre-sentations , ICLR. Manli Shu, Weili Nie, De-An Huang, Zhiding Yu, Tom Goldstein, Anima Anandkumar, and Chaowei Xiao. 2022. Test-time prompt tuning for zero-shot gener-alization in vision-language models. In Advances in Neural Information Processing Systems , volume 35 of NeurIPS , pages 14274–14289. Khurram Soomro, Amir Roshan Zamir, and Mubarak Shah. 2012. UCF101: A dataset of 101 human ac-tions classes from videos in the wild. arXiv preprint arXiv:1212.0402 .Petar Veliˇ ckovi´ c, Guillem Cucurull, Arantxa Casanova, Adriana Romero, Pietro Liò, and Yoshua Bengio. 2018. Graph attention networks. In International Conference on Learning Representations , ICLR. Mengjia Wang, Fang Liu, Licheng Jiao, Shuo Li, Lin-gling Li, Puhua Chen, Xu Liu, and Wenping Ma. 2026. VCGPrompt: Visual Concept Graph-Aware Prompt Learning for Vision-Language Models. Pat-tern Recognition , 170:112012. Jihoon Yoon, Jae-hun Oh, Byungho Kim, In So Kweon, and Jongwoo Choi. 2024. C-TPT: Calibrated test-time prompt tuning for vision-language models via text feature dispersion. In International Conference on Learning Representations , ICLR. Xiaobao Zheng, Liqiang Ji, Changhao Hong, Nong Ying, Mengqi Liu, and Zheng Zhang. 2024. HG-CLIP: Exploring vision-language models with graph representations for hierarchical understanding. In 
+
+Proceedings of the IEEE/CVF Conference on Com-puter Vision and Pattern Recognition , CVPR. Kaiyang Zhou, Jingkang Yang, Chen Change Loy, and Ziwei Liu. 2022a. Conditional prompt learning for vision-language models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pat-tern Recognition , CVPR, pages 16816–16825. Kaiyang Zhou, Jingkang Yang, Chen Change Loy, and Ziwei Liu. 2022b. Learning to prompt for vision-language models. International Journal of Computer Vision , 130:2337–2348. 
+
+10 Appendix Contents 
+
+Section Page A Datasets 12 
+
+B GAT Architecture Details 12 
+
+Attention and Aggregation 12 
+
+Residual, Normalisation, and Projection 12 
+
+Node Attention Score 12 
+
+C Ablation Studies 12 
+
+C.1 Attribute Comparison: TCA vs. ARG TCA -D IV vs. ARG TCA -D ISC 12 
+
+C.2 Zero Graph Edges 12 
+
+C.3 No GAT Training (Raw CLIP EOS Embeddings) 12 
+
+C.4 Random Attribute Selection 12 
+
+C.5 Hyperparameter Sensitivity ( α, β) 12 
+
+D Prompt Token Layout 13 
+
+E Notation Reference 14 
+
+Figures 
+
+TCA Pipeline Overview 13 Reliability Diagrams Across All Datasets (ViT-B/16) 15 
+
+Tables 
+
+Attribute Comparison: TCA vs. A RG TCA -D IV vs. A RG TCA -D ISC 8Ablation Results 8Prompt Token Layout — A RG TCA 13 Notation Reference 14 11 A Datasets 
+
+We evaluate on nine benchmarks: Caltech101 (Fei-Fei et al., 2004) (general objects), Stanford-Cars (Krause et al., 2013), FGVC-Aircraft (Maji et al., 2013), OxfordPets (Parkhi et al., 2012), and Flowers102 (Nilsback and Zisserman, 2008) (fine-grained recognition), Food101 (Bossard et al., 2014) (food categories), DTD (Cimpoi et al., 2014) (perceptual textures), UCF101 (Soomro et al., 2012) (action recognition), and EuroSAT (Helber et al., 2019) (satellite land-use). We follow the standard (Zhou et al., 2022b) test splits used in TCA (Hebbalaguppe et al., 2025), evaluating on the test set only with no labeled data. 
+
+Notation Reference 
+
+A full list of all the notations used in the document are provided in Table 5. 
+
+B GAT Architecture Details 
+
+Our graph-based attribute selection follows the Graph Attention Network (GAT) framework of Veliˇ ckovi´ c et al. (2018), which assigns learned importance weights to neighborhood edges dur-ing message passing, enabling the model to selec-tively aggregate information from the most relevant neighbors. Our S AG is an undirected graph; each undirected edge {u, v } ∈ E is represented as two directed edges (u → v) and (v → u) during mes-sage passing, following standard practice in GAT implementations. 
+
+Attention and aggregation. For each edge 
+
+{u, v } and head h, the normalized attention co-efficient is:       
+
+> αuv,h =exp
+> 
+> LeakyReLU( a⊤
+> h[ehu,h ∥ehv,h ])
+> P
+> u′∈N (v)exp
+> 
+> LeakyReLU( a⊤
+> h[ehu′,h ∥ehv,h ])
+> ,
+> (11)
+
+where eh = h(l)Wlayer is the linearly projected em-bedding. Node representations are updated as:       
+
+> eh(l)= ELU
+> concat Hh=1
+> X
+> u∈N (v)
+> drop( αuv,h )·ehu,h
+> .
+> (12)
+
+Residual, normalisation, and projection. Af-ter L layers, a residual connection (with Wres ini-tialised to I) mitigates over-smoothing, followed by ℓ2 normalisation: 
+
+h(L) = normalize 
+
+eh(L) + Wres h(0) 
+
+. (13) A two-layer MLP projects to the final embedding: 
+
+z = W2(GELU( W1h(L) + b1)) .
+
+Node attention score. A scalar importance score per node, used for attribute selection in A RG TCA -DIV and A RG TCA -D ISC , is computed as the mean attention coefficient across heads and layers: 
+
+attn[ v] = 1
+
+LH 
+
+> L
+
+X
+
+> l=1
+> H
+
+X
+
+> h=1
+
+1
+
+|N (v)|
+
+X 
+
+> u∈N (v)
+
+αuv,h .
+
+(14) This scalar serves as the basis for attribute selec-tion in both A RG TCA -D IV and A RG TCA -D ISC 
+
+(Section 3.2). 
+
+C Ablation Studies 
+
+C.1 Attribute comparison: TCA vs. ARG TCA -D IV vs. A RG TCA -D ISC .
+
+The table 3 lists the two attributes selected per method for a representative subset of classes from Caltech101, OxfordPets, and DTD. TCA ranks attributes by cosine similarity between each at-tribute’s frozen CLIP embedding and the class name embedding, selecting the top-M ′; A RG TCA -DIV selects the most complementary pair by min-imum pairwise cosine similarity in h(L) space; ARG TCA -D ISC selects the pair with highest mean cosine distance to all other-class embeddings in 
+
+h(L) space. 
+
+C.2 Zero graph edges. 
+
+To isolate the contribution of the S AG edge struc-ture, we train the GAT with E = ∅: all nodes are present and trained via supervised contrastive loss, but no message passing occurs. Without edges, each GAT layer reduces to an independent per-node linear transform; no cross-class or within-class structural context propagates. Attribute se-lection uses the same Div/Disc criteria on these edge-free embeddings. The calibration drop on DTD relative to the full model (Table 2) confirms that the S AG ’s edge topology — not the contrastive objective alone — drives selection quality. 
+
+C.3 No GAT training (raw CLIP EOS embeddings). 
+
+We skip Phase 1 entirely and apply the Div/Disc selection criteria directly to the initial embeddings 
+
+h(0) (frozen CLIP EOS hidden states, Eq. 4), with-out any contrastive training. This tests whether GAT training adds value beyond the semantic ge-ometry already present in CLIP’s encoder. The 12 Position Content Notes 0 SOS token embedding Frozen 
+
+1–nctx Soft prompt p ∈ Rnctx ×Dt Learnable (tuned at test time) 
+
+nctx + 1 akm graph selected attribute 
+
+nctx + 2 – L−1 Class tokens + EOS + padding Frozen 
+
+Table 4: Full positional breakdown of a prompt in A RG TCA .Dolphin Image encoder Text encoder 
+
+> Backpropagation
+> Backpropagation Training/Tuning Frozen
+> Learnable parameters Dog Cat
+> Augmentations Loss
+
+Figure 7: Test time prompt calibration 
+
+DTD ECE degrades substantially (Disc: 8.95 vs. 
+
+6.36 for the full model), showing that contrastive relational training is necessary for reliable attribute discrimination on texture-heavy datasets. 
+
+C.4 Random attribute selection. 
+
+We run Phase 1 in full (SAG construction, GAT training) but replace Div/Disc selection with a ran-dom draw of M ′ = 2 attributes per class (seed 42). This isolates the selection criterion: random selection degrades ECE on DTD (Div: 5.16 vs. 
+
+3.17 for the full model) while leaving Caltech ac-curacy largely unchanged, confirming that the ge-ometric Div/Disc criteria are the operative mecha-nism for calibration improvement, not merely the graph training. 
+
+C.5 Hyperparameter sensitivity ( α, β). 
+
+Figures 5 and 6 show ECE as α and β are swept in-dependently ( α ∈ { 5, 10 , 20 , 40 } with β=35 fixed; 
+
+β ∈ { 15 , 25 , 35 , 50 } with α=10 fixed), evaluated on Caltech101, OxfordPets, and DTD for both ARG TCA -D IV and A RG TCA -D ISC . Both metrics are stable across the swept range: ECE varies by at most ∼1.5% on Caltech101 and ∼2.0% on DTD for α, and by at most ∼1.8% on DTD for β. The optimal region is α ∈ [10 , 20] and β ∈ [25 , 35] ;the ViT-B/16 defaults ( α=10 , β=35 ) lie within this plateau, confirming robustness to precise hy-perparameter choice. 13 Symbol Shape / Type Meaning 
+
+K scalar Number of classes 
+
+M scalar Attributes loaded per class ( num_attributes = 10 )
+
+M ′ scalar Attributes selected for injection ( prompt_attributes = 2 )
+
+N = K × M scalar Total graph nodes 
+
+d = 512 scalar CLIP token embedding dimension 
+
+ck string Class name for class kaj string j-th attribute string 
+
+(ck, a j ) tuple Node i in the graph 
+
+h(0)  
+
+> i
+
+Rd Initial node embedding (CLIP EOS hidden state) 
+
+h(L) 
+
+> i
+
+Rd GAT output (refined node embedding) 
+
+p Rnctx ×d Soft prompt context (trainable, Phase 2) 
+
+g(·) Rd CLIP text encoder EOS hidden state 
+
+f (·) Rdout CLIP text encoder full output (after projection T)
+
+τ scalar InfoNCE temperature 
+
+α, β scalars TCA inter / intra loss weights 
+
+> Table 5: Notation used throughout this document.
+
+14 TPT TCA C-TPT A-TPT O-TPT ARG TCA (Ours) 
+
+> DTD
+> Stanford Cars
+> Food101
+> Oxford Pets
+> EuroSAT
+> Aircraft
+> Flower102
+
+Figure 8: Reliability diagrams across all datasets using ViT-B/16. Each row is a dataset; each column is a method. Bars above/below the diagonal (pink) indicate under/overconfidence. A RG TCA consistently shows better alignment with the diagonal across all datasets. 
+
+15 1.9 
+
+> 2.4
+> 2.9
+> 3.4
+> 3.9
+> 1.9
+> 2.4
+> 2.9
+> 3.4
+> 3.9
+> 2.0 2.7 3.3 4.0 4.6
+> 4.7
+> 6.3
+> 7.9
+> 9.6
+> 11.2
+> 1.8
+> 2.2
+> 2.6
+> 3.0
+> 3.4
+> 5.8
+> 8.1
+> 10.3
+> 12.5
+> 14.7
+> 8.6
+> 11.8
+> 15.0
+> 18.2
+> 21.4
+> 12.2
+> 14.8
+> 17.4
+> 20.0
+> 22.6
+> 3.7
+> 4.5
+> 5.2
+> 5.9
+> 6.6
+
+Caltech101 
+
+Pets 
+
+Cars 
+
+Flower 
+
+Food101 Aircraft 
+
+DTD 
+
+EuroSAT 
+
+UCF101 
+
+ECE Comparison (lower is better) 
+
+TCA O-TPT A-TPT ARGTCA-DISC Figure 9: Radar plot comparing ECE (lower is better, smaller area is better) of TCA, O-TPT, A-TPT, and ARG TCA -D ISC (Ours) across nine datasets (ViT-B/16). 
+
+16
