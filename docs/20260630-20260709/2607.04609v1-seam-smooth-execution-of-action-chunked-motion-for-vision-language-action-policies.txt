@@ -1,0 +1,241 @@
+Title: SEAM: Smooth Execution of Action-Chunked Motion for Vision-Language-Action Policies
+
+URL Source: https://arxiv.org/pdf/2607.04609v1
+
+Published Time: Tue, 07 Jul 2026 03:14:09 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# SEAM: Smooth Execution of Action-Chunked Motion for Vision-Language-Action Policies 
+
+# Dijia Zhan ∗, Xuemiao Xu †, Jinyi Li ∗, Jie Tang †
+
+South China University of Technology 
+
+> ∗
+
+Equal contribution †Corresponding authors 
+
+Abstract 
+
+Vision-Language-Action (VLA) policies that execute fixed-length action chunks can exhibit multimodal bifurcation : a cross-chunk inconsistency in which adjacent chunks gener-ated from independent Gaussian latents can converge to in-compatible trajectory modes, producing abrupt discontinu-ities at chunk boundaries. Existing remedies either require backpropagation through the policy at each denoising step, rely on rejection sampling, or require retraining, each trad-ing computational cost or task reliability for smoother tran-sitions. We propose SEAM (Smooth Execution of Action-chunked Motion), a training-free inference-time method for flow matching VLAs. SEAM exploits a simple synchronous-execution insight: after the robot consumes the executed pre-fix, the previous chunk’s unexecuted tail is already avail-able as an analytic consistency reference. Its core mecha-nism, Velocity-guided Loss Steering (VLS), derives a time-dependent target from this tail and applies a closed-form cor-rection after each Euler step without backpropagating through the policy network. On LIBERO-10 with π0.5, SEAM reduces boundary jerk by 28%, reduces chunk transition discontinu-ity by 27%, preserves baseline-level task success, and keeps denoising-loop cost near the unguided baseline. 
+
+# Introduction 
+
+Vision-Language-Action (VLA) policies have become cen-tral to language-conditioned robotic manipulation, from RT-1 and RT-2 to OpenVLA, π0, and π0.5 (Brohan et al. 2022; Zitkovich et al. 2023; Kim et al. 2024; Black et al. 2024; Physical Intelligence et al. 2025). Given visual observations and a natural-language instruction, these policies generate robot action trajectories that must remain task-directed and physically smooth. Recent flow matching VLAs such as 
+
+π0.5 (Physical Intelligence et al. 2025) model this genera-tion process as an ODE that transports Gaussian noise into an action trajectory. A key design choice in these policies is action chunk-ing (Zhao et al. 2023; Chi et al. 2025): the model predicts 
+
+H future actions at once, executes only the first K ≪ H,and then predicts the next chunk. Chunking improves local temporal coherence because each prediction contains a short motion plan, but because only K of the H predicted actions are executed before re-prediction, consecutive chunks share an overlap region of H−K steps. Ideally, the beginning of the new chunk should agree with the unexecuted tail of the previous one. In practice, however, the two chunks are gener-ated from independent noise samples zn, zn+1 ∼ N (0, I),so their overlap predictions can disagree even when the ob-servations are nearby in time. This disagreement can manifest as multimodal bifurca-tion (Figure 1a), a cross-chunk inconsistency in which adja-cent chunks choose incompatible trajectory modes. Contact-rich manipulation often admits multiple valid local strate-gies (Shafiullah et al. 2022), and a flow matching policy rep-resents these alternatives by mapping different noise samples to different trajectory modes. Adjacent chunks can therefore select incompatible modes: one chunk may continue an ap-proach from one side of an object, while the next begins a different approach, creating a sharp reversal exactly at the chunk transition (Wang 2026; Black, Galliker, and Levine 2025). This artifact is not merely cosmetic; it increases jerk and discontinuity at the chunk boundary, which can introduce large motion discontinuities and reduce execution reliability. Existing cross-chunk remedies occupy different points on a cost–smoothness spectrum. They share a common objec-tive: reducing chunk-boundary artifacts by encouraging the new chunk to agree with the unexecuted tail of the previ-ous chunk, but they instantiate this objective through differ-ent mechanisms and incur different costs. Temporal ensem-bling (Zhao et al. 2023) averages overlapping predictions, which can create invalid intermediate actions when adjacent chunks choose incompatible modes. RTC (Black, Galliker, and Levine 2025) treats continuation as conditional inpaint-ing and applies ΠGDM gradients inside the denoising ODE; this strongly improves consistency, but the required policy-network backpropagation at each ODE step substantially in-creases denoising latency. BID (Liu et al. 2025) searches for consistent continuations by rejection sampling, increas-ing inference cost, while Legato (Liu et al. 2026) learns continuation-aware dynamics during training and therefore requires retraining the action model. Although these methods demonstrate that cross-chunk consistency can reduce chunk-boundary artifacts, they do not provide a computationally lightweight, training-free analytical mechanism for impos-ing such consistency. These limitations suggest a more specific gap in the com-mon synchronous chunked-execution setting: when the robot consumes K actions before requesting the next chunk, the full unexecuted tail of the previous prediction is already avail-
+
+> arXiv:2607.04609v1 [cs.RO] 6 Jul 2026
+
+Figure 1: SEAM overview. (a) Independent chunk sampling can produce two boundary artifacts: an intention conflict ( Mode C ), where the next chunk reverses motion, and a position gap ( Mode B ), where the next chunk preserves direction but starts from an offset. Goals 1 and 2 denote two feasible local continuations. (b) SEAM performs VLS-guided overlap steering by nudging the guided overlap window toward the aligned prior, the unexecuted tail of the previous chunk, bridging the position gap and correcting the intention conflict without backpropagating through the policy. able, yet existing remedies either average across incompati-ble modes, require costly gradient-based inpainting, rely on rejection sampling, or modify the trained policy. We propose SEAM (Smooth Execution of Action-chunked Motion), a training-free inference-time method whose core mechanism is Velocity-guided Loss Steering (VLS) . SEAM exploits this overlooked structure by us-ing the previous prediction’s L=H−K tail as an analytic cross-chunk consistency reference. VLS constructs a time-interpolated consistency target from this reference and ap-plies a closed-form correction after each Euler step of the flow matching ODE without backpropagating through the policy network. On LIBERO-10 with π0.5, the baseline boundary jerk is more than twice its interior jerk (0.195 vs. 0.094), indicating that motion irregularity is concentrated at chunk boundaries rather than uniformly distributed across the tra-jectory. SEAM reduces boundary jerk by 28% and chunk transition discontinuity by 27% at 1.01 × denoising-loop cost, while preserving baseline-level task success (95.7% vs. 94.8%). RTC reaches lower boundary jerk and chunk discon-tinuity with 95.1% success, but its policy-network gradients raise denoising-loop cost to 1.22 × the baseline; ACT-TE reaches lower motion metrics at substantially lower task suc-cess. These comparisons highlight SEAM’s intended oper-ating regime: improving cross-chunk motion quality while keeping denoising-loop overhead small and preserving task-directed policy predictions. In summary, our key contributions are as follows: 
+
+• We cast cross-chunk consistency in synchronous chunked execution as an analytic overlap-alignment objective and propose SEAM, a training-free inference-time method to mitigate this artifact. 
+
+• We design VLS, the core mechanism of SEAM, as a closed-form correction that steers the denoising ODE to-ward an aligned prior without backpropagating through the policy network, reducing cross-chunk inconsistency at execution boundaries. 
+
+• We validate SEAM on LIBERO-10, showing a 28% re-duction in boundary jerk and a 27% reduction in chunk discontinuity while preserving baseline-level task success at near-baseline denoising-loop cost. 
+
+# Related Work 
+
+Generalist, Chunked, and Generative Robot Policies 
+
+Large robot policies increasingly connect visual observa-tions, language instructions, and low-level actions in a single policy interface, from RT-1 and RT-2 to OpenVLA, Octo, 
+
+π0, π0.5, and LingBot-VLA (Brohan et al. 2022; Zitkovich et al. 2023; Kim et al. 2024; Octo Model Team et al. 2024; Black et al. 2024; Physical Intelligence et al. 2025; Wu et al. 2026). Many of these systems use action chunking , which predicts multiple future controls and executes only a prefix, to obtain locally coherent motion plans (Zhao et al. 2023; Chi et al. 2025). At the same time, recent generative action models use diffusion or flow matching to represent multiple feasible continuations in continuous control, including dif-fusion VLA policies (Wen et al. 2025b,a) and flow-matching action policies (Jia et al. 2026; Yashima et al. 2026). This ex-pressiveness is useful for contact-rich tasks, but it also makes independently sampled adjacent chunks vulnerable to choos-ing incompatible modes, producing the chunk-boundary ar-tifact targeted by SEAM. Rather than scaling the backbone or dataset, SEAM improves cross-chunk consistency at in-ference time without retraining the base policy or changing the training data. 
+
+Cross-Chunk Consistency and Inference-Time Steering 
+
+Cross-chunk methods differ in how strongly they constrain the next chunk. Temporal ensembling averages overlaps but cannot select between incompatible modes. RTC (Black, Galliker, and Levine 2025) uses ΠGDM-style posterior guid-ance (Song et al. 2020; Chung et al. 2022) and backpropa-gates through the policy during denoising; BID searches for a consistent continuation by rejection sampling (Liu et al. Figure 2: Overview of SEAM. The previous decoded chunk cn is split into an executed prefix and an unexecuted tail. SEAM extends this tail into the aligned prior aal for the next chunk cn+1 . Starting from a standard-Gaussian denoising state, the policy runs Euler steps for the new chunk, while VLS evaluates a closed-form loss on the guided window M of each post-Euler candidate and corrects it toward the aligned prior. The correction is scaled by λ(1 −ti+1 ), giving weak guidance at noisy early states and stronger correction near the action manifold, without backpropagating through the policy. 2025); Legato, ABPolicy, and FASTER require retraining, action-space redesign, or solver-specific timing changes (Liu et al. 2026; Lu et al. 2026). More broadly, classifier and classifier-free guidance steer generative sampling at infer-ence time (Dhariwal and Nichol 2021; Ho and Salimans 2022), while inverse-problem methods guide diffusion tra-jectories with measurement constraints (Meng et al. 2021; Lugmayr et al. 2022; Kawar et al. 2022; Chung et al. 2022). SEAM instead targets the structural overlap con-straint in synchronous chunked execution and derives analyt-ical, backpropagation-free gradients from the flow matching ODE. 
+
+# Preliminaries 
+
+Flow Matching for Action Generation 
+
+Flow matching (Lipman et al. 2022; Tong et al. 2023) for-mulates generative modeling as learning a velocity field vθ
+
+that transports samples from a noise distribution to the data distribution via an ODE. Given data x0 ∼ pdata and noise 
+
+ϵ ∼ N (0, I), the forward interpolation defines: 
+
+xt = (1 − t) x0 + t ϵ, t ∈ [0 , 1] (1) with the conditional velocity field ut = ϵ − x0. The model vθ (xt, t ) is trained to approximate ut by minimiz-ing ∥vθ (xt, t ) − ut∥2. At inference, actions are generated by sampling z ∼ N (0, I) and solving the ODE backward from 
+
+t=1 to t=0 using Euler integration: 
+
+xt+∆ t = xt + ∆ t · vθ (xt, t ), ∆t = − 1
+
+N (2) where N is the number of integration steps. The final x0
+
+yields the predicted action sequence. 
+
+Action Chunking and Overlap 
+
+An action-chunked policy πθ generates a chunk c ∈ RH×D
+
+of H future actions at each prediction step, where D is the action dimension. Only the first K actions are executed before re-prediction, creating an overlap region of length 
+
+L = H − K between consecutive chunks. After execut-ing cn[1: K], the next chunk cn+1 should ideally satisfy 
+
+cn+1 [1: L] ≈ cn[K+1: H] in the overlap region. In prac-tice, this consistency rarely holds because cn+1 is generated from an independent noise sample zn+1 ∼ N (0, I).
+
+Multimodal action distributions. In contact-rich manip-ulation, the learned action distribution p(c | o) is inherently multimodal: given the same observation, qualitatively dis-tinct strategies ( e.g. , grasping from above vs. from the side) can all be valid. Flow matching captures this by mapping dif-ferent initial noise samples z to different modes. When con-secutive chunks sample zn, zn+1 independently, they may converge to incompatible modes even under similar observa-tions, producing a cross-chunk inconsistency that we refer to as multimodal bifurcation .
+
+# SEAM: Smooth Execution of Action-Chunked Motion 
+
+Overview 
+
+SEAM is a plug-and-play inference method for flow match-ing VLAs. Given the previous chunk’s unexecuted tail, it constructs an aligned prior and applies closed-form VLS corrections to the overlap prefix at every Euler step, without retraining the policy, adding auxiliary networks, or back-propagating through the policy at inference time. We use c
+
+for decoded action chunks, a for executed actions or action-space references, and xi for the discrete denoising solver state. Figure 2 shows the complete pipeline. 
+
+Aligned Prior Construction 
+
+Given the previous decoded chunk cn, we define the un-executed tail as atail = cn[K+1: H] ∈ RL×D , where 
+
+L = H − K. We extend this tail to chunk length H by repeating its last entry, producing the aligned prior :
+
+aal = Extend (atail , H ) ∈ RH×D . (3) The aligned prior is the only piece of cross-chunk state that VLS uses. Although aal is represented at chunk length H, the main method guides only the first M ≤ L overlap actions; repeating the last tail action simply makes the prior length-compatible with the generated chunk. In the main VLS-only setting, the next chunk is still initialised from standard Gaus-sian noise z ∼ N (0, I)H×D ; the prior acts only as a guid-ance target during denoising, leaving the policy’s marginal sampling process largely intact. The repeated-tail extension is intentionally conservative. It does not predict a new future trajectory beyond the observed overlap and it does not impose a terminal waypoint on the generated chunk. Instead, it provides a shape-compatible ref-erence whose reliable part is the previous chunk’s unexecuted tail. Since VLS applies guidance only to the first M over-lap positions, the repeated entries outside this guided prefix mainly serve as a simple padding rule that avoids introducing an additional extrapolator or learned continuation model. 
+
+Velocity-Guided Loss Steering (VLS) 
+
+VLS operates during ODE integration, steering the guided overlap prefix toward the aligned prior. The term “velocity-guided” reflects that the correction is inserted into the flow matching trajectory governed by the learned velocity field vθ ,using the linear velocity-path interpolation in Eq. 1 to define the target at each ODE time. Let M = min( L, L max ) be the number of overlap actions that receive guidance, where 
+
+Lmax is an optional maximum window length. We write the reverse Euler schedule as ti = 1 − i/N and let xi denote the latent state of the new chunk before the i-th Euler step. Thus, cn and aal are action-space sequences, while xi is the current denoising state with the same H × D chunk shape. If the policy were generating the same trajectory as the aligned prior aal , then the guided portion of the latent at time ti
+
+should sit near (1 −ti) aal . We adopt this as a closed-form, time-varying consistency target: 
+
+ri = (1 − ti) · aal [1: M ]. (4) This target is a local consistency surrogate, not an exact con-ditional posterior target: the true reverse state also contains noise and task-conditioned dynamics from the learned veloc-ity field, which VLS deliberately leaves to the policy while applying only a lightweight overlap correction. At each ODE step, we first compute the standard Euler candidate 
+
+exi+1 = xi + ( ti+1 − ti) vθ (xi, t i). (5) We then view VLS as minimizing a local quadratic consis-tency objective on the guided window at the updated ODE time, 
+
+ℓi+1 = ∥exi+1 [1: M ] − ri+1 ∥22 , (6) whose negative gradient with respect to exi+1 [1: M ] is avail-able in closed form because ri+1 depends only on the ODE time and the aligned prior, not on an inner optimization or automatic-differentiation pass through the policy network. VLS applies the correction to the guided window only: 
+
+gi+1 = −∇ ℓi+1 = −2 exi+1 [1: M ] − ri+1 
+
+, (7) 
+
+xi+1 [1: M ] = exi+1 [1: M ] + λ(1 − ti+1 ) · gi+1 . (8) Unguided positions keep their Euler-candidate values. The factor λ(1 −ti+1 ) makes the correction small at the noisy beginning of the reverse ODE and larger as the latent ap-proaches the action manifold. This schedule avoids over-constraining early denoising states, while still nudging the final overlap toward the previous chunk’s tail. Table 1 sum-marizes the complete chunk-level inference procedure.                                                      
+
+> SEAM inference for one chunk query Input: observation o, previous chunk tail atail , policy velocity field vθ, horizon H, execution length K, guided window M,strength λ, ODE steps N.
+> 1. Build the aligned prior aal =Extend (atail , H )by repeating the last tail action.
+> 2. Sample the initial latent x0∼ N (0,I)H×Dand set ti=1−i/N .
+> 3. For each ODE step i= 0 , . . . , N −1:
+> 3.1 Compute the standard Euler candidate exi+1 =xi+( ti+1 −
+> ti)vθ(xi, t i, o ).
+> 3.2 Form the overlap target ri+1 = (1 −ti+1 )aal [1: M].
+> 3.3 Apply the closed-form VLS update in Eq. 8 to exi+1 [1: M]
+> and keep all unguided positions unchanged.
+> 4. Decode the final chunk xNas the action prediction and execute its first Kactions.
+
+Table 1: Inference procedure for SEAM. The only cross-chunk state is the previous chunk’s unexecuted tail, and the guidance correction is computed directly inside the denoising loop without policy-network backpropagation. 
+
+Design choices and efficiency. VLS exposes two local de-sign choices: which action dimensions to guide and how much of the overlap to constrain. It can be applied to any subset of action dimensions and over a bounded prefix of the overlap window ( M ≤ L), allowing the method to trade correction footprint against policy freedom. This locality is also what keeps VLS inexpensive. For a guided dimension set of size Dg , each ODE step adds only slicing, subtraction, scalar weighting, and an overwrite on an M × Dg block, giving O(N · M · Dg ) additional scalar operations per chunk query. Because the consistency gradient in Eq. 7 is computed in closed form from the post-Euler candidate and the aligned prior, VLS does not require a policy-network backward pass or activation storage for gradient computation. Concrete hy-perparameter choices and measured denoising-loop costs are given in the experimental setup. Method Execution quality Denoising-loop cost Succ.% ↑ BJ ↓ IJ ↓ CD ↓ AV b↓ Extra ↓ Step ↓ Chunk ↓ D-Cost ↓                                     
+
+> π0.5(Baseline) 94.8 0.195 0.094 0.172 0.165 0.000 28.225 282.2 1.00 ×
+> + ACT-TE 82.7 0.031 0.031 0.062 0.006 0.000 28.225 282.2 1.00 ×
+> + RTC 95.1 0.090 0.075 0.089 0.094 6.236 34.460 344.6 1.22 ×
+> + SEAM 95.7 0.141 0.074 0.126 0.094 0.371 28.595 286.0 1.01 ×
+
+Table 2: Cost-aware main results on LIBERO-10. BJ: boundary jerk. IJ: interior jerk. CD: chunk transition discontinuity. AV b:acceleration variance at boundaries. Extra and Step report cached-prefix denoising-loop milliseconds per Euler step; Chunk reports milliseconds per 10-step chunk query; D-Cost is relative to base per-chunk denoising latency. Success is reported to assess task preservation, while lower motion-quality values indicate smoother execution. 
+
+# Experiments 
+
+Experimental Setup 
+
+Benchmark. We evaluate on LIBERO-10 (Liu et al. 2023), a suite of 10 long-horizon tabletop manipulation tasks in the LIBERO simulation environment. Each task requires multi-step reasoning with diverse objects, involving skills such as picking, placing, opening, and closing. 
+
+Backbone Policy. We use π0.5 (Physical Intelligence et al. 2025) as our base VLA policy. π0.5 employs a PaliGemma-2B (Beyer et al. 2024) vision-language model with aSigLIP (Zhai et al. 2023) vision encoder and a Gemma-300M (Gemma Team et al. 2024) action expert. On LIBERO-10, it generates action chunks of size H=50 using N =10 
+
+Euler ODE steps, with K=10 actions executed per chunk (overlap L=40 ); the policy is fine-tuned on the LIBERO-10 training set. 
+
+SEAM Setting. Unless otherwise noted, SEAM uses VLS guidance with λ=0 .1, linear (1 −t) decay at every ODE step, guided window M =20 over the first overlap positions, all physical action dimensions, and standard Gaussian initial-ization. The aligned prior repeats the final unexecuted-tail action to fill the remaining H−L positions. 
+
+Baseline settings. All comparison methods use their of-ficial or author-recommended inference settings rather than hyperparameters selected to favor SEAM. ACT temporal en-sembling uses the standard coefficient k=0 .01 and queries the policy at every environment step. RTC uses the rec-ommended ΠGDM configuration for action-chunked flow policies, maximum guidance weight β=5 , and exponential prefix-attention decay. 
+
+Evaluation Protocol. We report task success rate and four motion quality metrics on executed, post-processed action sequences. All rows use 130 episodes per task. We define the per-step jerk as 
+
+jt = ∥at+1 − 2at + at−1∥2 (9) at step t. We use B = {t | t mod K = 0 , t > 0} for the set of chunk boundaries and I for the remaining valid centers. Using these sets, the four motion metrics are defined as follows: 
+
+BJ = 1
+
+|B|
+
+X
+
+> t∈B
+
+jt, (10) 
+
+IJ = 1
+
+|I|
+
+X
+
+> t∈I
+
+jt, (11) 
+
+CD = 1
+
+|B|
+
+X
+
+> t∈B
+
+∥at − at−1∥2 , (12) 
+
+AV b = Var {jt | t ∈ B}. (13) Metrics are accumulated over valid rollout steps within each task and then averaged across the ten tasks. 
+
+Timing Protocol. We report denoising-loop timing on a local RTX 3090 in Table 2. The denoising-loop columns measure the cached-prefix ODE loop for one chunk gen-eration with N =10 Euler steps, isolating the algorithmic overhead added inside the action-generation loop. 
+
+Main Results 
+
+We compare SEAM against the baseline π0.5 policy, ACT temporal ensembling, and RTC on LIBERO-10 under matched evaluation settings (Table 2). SEAM reduces boundary jerk by 27.7% (0.195 → 0.141), interior jerk by 21.3% (0.094 → 0.074), chunk transition discontinuity by 26.7% (0.172 → 0.126), and AV b by 43.0% (0.165 → 0.094), while preserving baseline-level task suc-cess (95.7% vs. 94.8%). The comparison reveals a trade-off among denoising-loop cost, task success, and smoothness across cross-chunk methods. RTC reaches stronger boundary jerk reduction ( −54% , to 0.090) and chunk discontinuity re-duction ( −48% , to 0.089) with 95.1% success and the same AV b as SEAM (0.094), but its ΠGDM guidance requires one automatic-differentiation backward pass per ODE step and increases per-chunk denoising latency from 282.2 ms to 344.6 ms ( 1.22 ×). ACT-TE achieves the most aggressive smoothing (BJ 0.031, −84% , AV b 0.006) under its every-step query setting, but drops to 82.7% success. In contrast, SEAM removes the backward pass, adds only 3.8 ms to the denois-ing loop per 10-step chunk, and keeps denoising-loop latency at 1.01 × the baseline while reducing boundary artifacts and preserving comparable task success. Figure 3 visualizes this trade-off. The task-level success rates breakdown in Table 3 shows that SEAM preserves aggregate task success without uni-Figure 3: Cost–smoothness trade-off. D-Cost denotes relative cached-prefix denoising-loop cost; lower boundary jerk in-dicates smoother chunk transitions. Point labels report task success rate. SEAM lowers boundary jerk at near-baseline cost, while RTC and ACT-TE trade higher cost or lower suc-cess for stronger smoothing.                                                 
+
+> Task Base.% SEAM% RTC% ACT-TE%
+> T1 91.5 99.2 90.8 58.5 T2 98.5 100.0 93.8 93.8 T3 96.9 100.0 96.9 93.1 T4 97.7 96.9 96.2 91.5 T5 92.3 95.4 94.6 87.7 T6 99.2 100.0 100.0 97.7 T7 93.8 90.8 99.2 80.0 T8 97.7 96.9 97.7 81.5 T9 83.8 83.8 86.2 55.4 T10 96.2 93.8 95.4 87.7
+> Overall 94.8 95.7 95.1 82.7
+
+Table 3: Per-task success rates on LIBERO-10. T1–T10 de-note the fixed LIBERO-10 task order used for the aggregate results in Table 2. Best values in each row are in boldface; ties are bolded for all tied methods. formly improving every task: it is strongest on several tasks (T1–T3 and T5), ties the best comparison on T6, and remains below the best comparison method on some tasks (T7–T10). We therefore treat task success, smoothness, and denoising-loop cost jointly rather than as a single-metric ranking. Since T1 exhibits the largest gap among the compared methods, the later qualitative T1 failure-pattern analysis examines rep-resentative rollouts to explain how the other methods fail differently on this task. 
+
+Ablation Study 
+
+VLS strength trade-off. We first sweep the guidance strength λ at fixed M =20 for both all-dimension and position-only guidance, with the results shown in Table 4. In the all-dimension rows, increasing λ generally strengthens smoothing but quickly erodes task reliability. λ=0 .05 reaches 94.8% success with moderate smoothing, while the main 
+
+λ=0 .1 setting gives the best balance: 95.7% success with BJ 0.141 and CD 0.126. Larger strengths only marginally improve some jerk metrics, if at all, but reduce success to                                                             
+
+> Dims λMSucc.% ↑BJ ↓IJ ↓CD ↓
+> none ––94.8 0.195 0.094 0.172 all 0.05 20 94.8 0.162 0.082 0.145 all 0.10 20 95.7 0.141 0.074 0.126
+> all 0.15 20 92.8 0.140 0.071 0.127 all 0.20 20 89.5 0.147 0.067 0.135 pos 0.05 20 94.3 0.179 0.089 0.159 pos 0.10 20 94.0 0.162 0.085 0.143 pos 0.15 20 92.6 0.166 0.085 0.145 pos 0.20 20 88.2 0.168 0.083 0.152
+
+Table 4: Ablation of SEAM guidance strength and dimen-sion selection on LIBERO-10. “pos”: guidance on position dimensions only. “all”: all action dimensions. All guided rows use standard Gaussian initialization with M =20 . Best guided values are in boldface.                                                 
+
+> Setting MSucc.% ↑BJ ↓CD ↓
+> Baseline –94.8 0.195 0.172 SEAM 295.5 0.148 0.142 SEAM 494.8 0.156 0.146 SEAM 696.3 0.147 0.137 SEAM 895.0 0.149 0.138 SEAM 10 95.9 0.148 0.135 SEAM 12 95.1 0.153 0.140 SEAM 14 95.7 0.154 0.141 SEAM 16 94.7 0.147 0.134 SEAM 18 95.5 0.148 0.135 SEAM 20 95.7 0.141 0.126
+
+Table 5: Full-scale sweep of SEAM guided-window length 
+
+M on LIBERO-10. All SEAM rows use all action dimensions with λ=0 .1 and standard Gaussian initialization. Best values are in boldface. 92.8% at λ=0 .15 and 89.5% at λ=0 .2. This supports using a weak closed-form correction rather than forcing the denois-ing trajectory toward the previous chunk too aggressively. 
+
+Dimension selection matters. We next test whether VLS should guide all action dimensions or only position dimen-sions, with the matched sweeps shown in Table 4. Restricting guidance to position dimensions (“pos-only”) is more con-servative but less effective at smoothing than the matched all-dimension setting. At λ=0 .1 and M =20 , pos-only guid-ance yields BJ 0.162 and CD 0.143 with 94.0% success, whereas all-dimension guidance yields BJ 0.141 and CD 0.126 while preserving task success at 95.7%, supporting the bounded-window all-dimension setting used in the main results. 
+
+Window length controls boundary smoothing. The Ta-ble 5 shows that every tested M reduces BJ and CD relative to the baseline, while task success remains broadly stable from 94.7% to 96.3%. Larger windows tend to reduce CD more strongly, and M =20 gives the strongest smoothing (BJ 0.141, CD 0.126). This supports treating M primarily as a smoothness knob: increasing the guided window places Figure 4: Qualitative T1 failure analysis. Representative T1 rollouts explain the largest gap in Table 3: the baseline shows intent inconsistency, ACT-TE over-smooths contact timing, and RTC can lock into a failed alignment. SEAM preserves corrective action freedom while improving cross-chunk consistency. more of the overlap under the consistency target, while task success remains stable within the tested range. 
+
+Qualitative T1 failure patterns. To explain why T1 shows the largest per-task gap in Table 3, Figure 4 compares rep-resentative T1 rollouts. The unguided baseline can switch intent and drop the object during transfer; ACT-TE can over-smooth contact timing and delay accurate grasping; RTC can preserve a failed early grasp through its stronger continuation constraint. SEAM avoids these failure modes by using weak overlap consistency rather than hard continuation, preserv-ing corrective freedom while improving cross-chunk consis-tency. This pattern is consistent with the T1 success rates in Table 3. 
+
+# Conclusion 
+
+We presented SEAM, a training-free inference-time method for improving chunk-boundary consistency in flow matching-based VLA policies. SEAM uses the previous chunk’s un-executed tail as a consistency reference and applies VLS corrections inside the ODE solver without backpropagat-ing through the policy network. On LIBERO-10, SEAM reduces boundary artifacts while preserving task success and keeping denoising-loop cost near the unguided baseline. Overall, SEAM offers a lightweight way to improve cross-chunk consistency in action-chunked VLA policies, balanc-ing smoother transitions with task success and denoising-loop cost. 
+
+# Acknowledgments 
+
+This work was supported by Guangdong Provincial Natural Science Foundation for Outstanding Youth Team Project (No. 2024B1515040010), National Natural Science Foundation of China under Grant U23A20391, 62372188, and Guangdong Natural Science Foundation under Grant 2024A1515010100. 
+
+# References 
+
+Beyer, L.; Steiner, A.; Pinto, A. S.; Kolesnikov, A.; Wang, X.; Salz, D.; Neumann, M.; Alabdulmohsin, I.; Tschannen, M.; Bugliarello, E.; et al. 2024. PaliGemma: A Versatile 3B VLM for Transfer. arXiv preprint arXiv:2407.07726 .Black, K.; Brown, N.; Driess, D.; Esmail, A.; Equi, M.; Finn, C.; Fusai, N.; Groom, L.; Hausman, K.; Ichter, B.; et al. 2024. π0: A Vision-Language-Action Flow Model for Gen-eral Robot Control. arXiv preprint arXiv:2410.24164 .Black, K.; Galliker, M.; and Levine, S. 2025. Real-Time Execution of Action Chunking Flow Policies. In Advances in Neural Information Processing Systems , volume 38, 33383– 33407. Brohan, A.; Brown, N.; Carbajal, J.; Chebotar, Y.; Dabis, J.; Finn, C.; Gopalakrishnan, K.; Hausman, K.; Herzog, A.; Hsu, J.; et al. 2022. RT-1: Robotics Transformer for Real-World Control at Scale. arXiv preprint arXiv:2212.06817 .Chi, C.; Xu, Z.; Feng, S.; Cousineau, E.; Du, Y.; Burchfiel, B.; Tedrake, R.; and Song, S. 2025. Diffusion Policy: Visuomo-tor Policy Learning via Action Diffusion. The International Journal of Robotics Research , 44(10-11): 1684–1704. Chung, H.; Kim, J.; Mccann, M. T.; Klasky, M. L.; and Ye, J. C. 2022. Diffusion Posterior Sampling for General Noisy Inverse Problems. arXiv preprint arXiv:2209.14687 .Dhariwal, P.; and Nichol, A. 2021. Diffusion Models Beat GANs on Image Synthesis. Advances in Neural Information Processing Systems , 34: 8780–8794. Gemma Team; Mesnard, T.; Hardin, C.; Dadashi, R.; Bhu-patiraju, S.; Pathak, S.; Sifre, L.; Rivière, M.; Kale, M. S.; Love, J.; et al. 2024. Gemma: Open Models Based on Gemini Research and Technology. arXiv preprint arXiv:2403.08295 .Ho, J.; and Salimans, T. 2022. Classifier-Free Diffusion Guidance. arXiv preprint arXiv:2207.12598 .Jia, J.; Li, G.; Chen, X.; An, T.; Hu, Y.; Li, J.; Guo, X.; and Yang, J. 2026. Action-to-Action Flow Matching. arXiv preprint arXiv:2602.07322 .Kawar, B.; Elad, M.; Ermon, S.; and Song, J. 2022. De-noising Diffusion Restoration Models. Advances in Neural Information Processing Systems , 35: 23593–23606. Kim, M. J.; Pertsch, K.; Karamcheti, S.; Xiao, T.; Balakr-ishna, A.; Nair, S.; Rafailov, R.; Foster, E.; Lam, G.; San-keti, P.; et al. 2024. OpenVLA: An Open-Source Vision-Language-Action Model. arXiv preprint arXiv:2406.09246 .Lipman, Y.; Chen, R. T.; Ben-Hamu, H.; Nickel, M.; and Le, M. 2022. Flow Matching for Generative Modeling. arXiv preprint arXiv:2210.02747 .Liu, B.; Zhu, Y.; Gao, C.; Feng, Y.; Liu, Q.; Zhu, Y.; and Stone, P. 2023. LIBERO: Benchmarking Knowledge Trans-fer for Lifelong Robot Learning. Advances in Neural Infor-mation Processing Systems , 36: 44776–44791. Liu, Y.; Hamid, J. I.; Xie, A.; Lee, Y.; Du, M.; and Finn, C. 2025. Bidirectional Decoding: Improving Action Chunking via Guided Test-Time Sampling. In International Conference on Learning Representations .Liu, Y.; Yu, H.; Zhao, J.; Li, B.; Zhang, D.; Li, M.; Wu, W.; Hu, Y.; Xie, J.; Guo, J.; et al. 2026. Learning Native Con-tinuation for Action Chunking Flow Policies. arXiv preprint arXiv:2602.12978 .Lu, Y.; Liu, Z.; Fan, X.; Yang, Z.; Hou, J.; Li, J.; Ding, K.; and Zhao, H. 2026. FASTER: Rethinking Real-Time Flow VLAs. arXiv preprint arXiv:2603.19199 .Lugmayr, A.; Danelljan, M.; Romero, A.; Yu, F.; Timofte, R.; and Van Gool, L. 2022. RePaint: Inpainting Using De-noising Diffusion Probabilistic Models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 11461–11471. Meng, C.; He, Y.; Song, Y.; Song, J.; Wu, J.; Zhu, J.-Y.; and Ermon, S. 2021. SDEdit: Guided Image Synthesis and Edit-ing with Stochastic Differential Equations. arXiv preprint arXiv:2108.01073 .Octo Model Team; Ghosh, D.; Walke, H.; Pertsch, K.; Black, K.; Mees, O.; Dasari, S.; Hejna, J.; Kreiman, T.; Xu, C.; et al. 2024. Octo: An Open-Source Generalist Robot Policy. arXiv preprint arXiv:2405.12213 .Physical Intelligence; Black, K.; Brown, N.; Darpinian, J.; Dhabalia, K.; Driess, D.; Esmail, A.; Equi, M.; Finn, C.; Fusai, N.; et al. 2025. π0.5: A Vision-Language-Action Model with Open-World Generalization. arXiv preprint arXiv:2504.16054 .Shafiullah, N. M.; Cui, Z.; Altanzaya, A. A.; and Pinto, L. 2022. Behavior Transformers: Cloning k Modes with One Stone. Advances in Neural Information Processing Systems ,35: 22955–22968. Song, Y.; Sohl-Dickstein, J.; Kingma, D. P.; Kumar, A.; Er-mon, S.; and Poole, B. 2020. Score-Based Generative Model-ing through Stochastic Differential Equations. arXiv preprint arXiv:2011.13456 .Tong, A.; Fatras, K.; Malkin, N.; Huguet, G.; Zhang, Y.; Rector-Brooks, J.; Wolf, G.; and Bengio, Y. 2023. Improving and Generalizing Flow-Based Generative Models with Mini-batch Optimal Transport. arXiv preprint arXiv:2302.00482 .Wang, R. 2026. Noise-Space Attribution and Control of Chunk-Boundary Artifact. arXiv preprint arXiv:2603.11642 .Wen, J.; Zhu, M.; Liu, J.; Liu, Z.; Yang, Y.; Zhang, L.; Zhang, S.; Zhu, Y.; and Xu, Y. 2025a. dVLA: Diffusion Vision-Language-Action Model with Multimodal Chain-of-Thought. arXiv preprint arXiv:2509.25681 .Wen, Y.; Li, H.; Gu, K.; Zhao, Y.; Wang, T.; and Sun, X. 2025b. LLaDA-VLA: Vision Language Diffusion Action Models. arXiv preprint arXiv:2509.06932 .Wu, W.; Lu, F.; Wang, Y.; Yang, S.; Liu, S.; Wang, F.; Zhu, Q.; Sun, H.; Wang, Y.; Ma, S.; et al. 2026. A Pragmatic VLA Foundation Model. arXiv preprint arXiv:2601.18692 .Yashima, D.; Seno, K.; Kurita, S.; Oda, Y.; and Sugiura, K. 2026. HiFlow: Tokenization-Free Scale-Wise Autoregres-sive Policy Learning via Flow Matching. arXiv preprint arXiv:2603.27281 .Zhai, X.; Mustafa, B.; Kolesnikov, A.; and Beyer, L. 2023. Sigmoid Loss for Language Image Pre-Training. In Proceed-ings of the IEEE/CVF International Conference on Computer Vision , 11975–11986. Zhao, T. Z.; Kumar, V.; Levine, S.; and Finn, C. 2023. Learn-ing Fine-Grained Bimanual Manipulation with Low-Cost Hardware. arXiv preprint arXiv:2304.13705 .Zitkovich, B.; Yu, T.; Xu, S.; Xu, P.; Xiao, T.; Xia, F.; Wu, J.; Wohlhart, P.; Welker, S.; Wahid, A.; et al. 2023. RT-2: Vision-Language-Action Models Transfer Web Knowledge to Robotic Control. In Conference on Robot Learning , 2165– 2183. PMLR.

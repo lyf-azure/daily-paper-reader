@@ -1,0 +1,378 @@
+Title: The Moving Eye: Enhancing VLA Spatial Generalization via Hybrid Dynamic Data Collection
+
+URL Source: https://arxiv.org/pdf/2607.02322v1
+
+Published Time: Fri, 03 Jul 2026 01:30:48 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# The Moving Eye: Enhancing VLA Spatial Generalization via Hybrid Dynamic Data Collection 
+
+Jincheng Tang 1†, Yilong Zhu 1,2†, Zhengyuan Xie 1,3†, Jiang-Jiang Liu 1∗, Jiaxing Zhang 1
+
+Abstract — Vision-Language-Action (VLA) models have shown remarkable promise in generalized robotic manipulation. However, their spatial generalization remains fragile. We argue that simply increasing the number of viewpoints is insufficient. Models often fall into the trap of Shortcut Learning, latching onto spurious correlations (e.g., fixed relative poses between objects or between the camera and robot base) rather than learning true spatial relationships. In this work, we propose a data-centric solution to enhance VLA spatial generalization. We utilize a dual-arm setup where one arm performs manipulation while the other serves as a mobile environmental camera. We systematically evaluate three data distribution patterns: Fixed, Multi-Fixed, and Moving Views. Our findings reveal that a hybrid strategy—combining continuous camera motion with diverse static viewpoints—yields the best performance by substantially reducing spurious correlations while maintaining training stability. Our experiments demonstrate that this strategy mitigates spurious correlations, enabling VLAs to generalize to unseen camera poses and object configurations where simply adding more static viewpoints fails. Crucially, we reveal that the susceptibility to shortcut learning and the struggle with spatial generalization are universal characteristics shared across diverse architectures. Consequently, all evaluated models (ACT, Diffusion, and VLA models including Pi0 and Gr00t) benefit significantly from our mixed data strategy. 
+
+I. INTRODUCTION Vision-Language-Action (VLA) models have demon-strated impressive semantic understanding and manipulation capabilities. However, their spatial generalization remains fragile: slight perturbations in camera pose or object config-uration can expose substantial robustness and generalization gaps [1]–[4]. Current methods struggle to maintain robust-ness when the visual input deviates even marginally from the training distribution. We identify shortcut learning as a key contributing factor: models often exploit spurious camera–robot–object regularities instead of learning task-relevant spatial relations. We categorize these shortcuts into three types of implicit couplings:  
+
+> •
+
+Camera-Base Coupling: The model memorizes the robot’s static appearance relative to the background (cf. Exp. 1).  
+
+> •
+
+Camera-Object Coupling: The model relies on fixed camera angles to recognize objects, failing when viewed from new perspectives.                  
+
+> †Equal contribution.
+> ∗Corresponding author and project leader: Jiang-Jiang Liu (j04.liu@gmail.com ).
+> 1Lion Rock AI Lab, China Merchants Research Institute of Advanced Technology.
+> 2The Hong Kong University of Science and Technology.
+> 3Nankai University.
+> Fig. 1. Hierarchical Spatial Zoning for Data Collection. We con-ceptualize the robot’s camera workspace into three configurations: Fixed View , where the camera is static; Multi-Fixed View , where the camera is static within an episode but varies across episodes; and Moving View , the decoupling zone where the camera moves continuously to break spurious correlations. Our key insight is that low-cost decoupled data from Moving Views can robustify the policy trained on Multi-Fixed Views.
+> •
+
+Object-Position Coupling: The model overfits to the fixed relative positions between objects (e.g., a pen and a holder). As we demonstrate in Exp. 2, even with diverse camera views, if the relative position of the target and receptacle remains static, the model exhibits a clear drop in generalization to new configurations. Addressing these couplings is critical for real-world de-ployment, where visual stability is rarely guaranteed. As summarized in Table I, we categorize camera configurations into three types based on their motion characteristics. While Fixed and Multi-Fixed views are common, they are suscep-tible to the aforementioned couplings. Real-world scenarios often demand robustness across these configurations:  
+
+> •
+
+Static Cameras (Fixed View): Even fixed cameras suffer from mechanical vibrations or accidental nudges.  
+
+> •
+
+Fixed Multi-View Scenarios (Multi-Fixed View): 
+
+Multi-Fixed View typically arises when data are col-lected from different camera rig positions, when mul-tiple datasets with different ego-camera placements are mixed for training, or when using surveillance requiring robustness across discrete viewpoints.  
+
+> •
+
+Moving View Scenarios (Moving View): Dynamic sce-narios such as VR/AR or ego-centric data [5], handheld operation, and mobile manipulation demand continuous spatial understanding.                
+
+> arXiv:2607.02322v1 [cs.RO] 2 Jul 2026 TABLE I
+> EXPERIMENTAL CONDITIONS : V IEW DEFINITIONS .SUMMARY OF THE THREE CAMERA CONFIGURATIONS USED IN OUR EXPERIMENTS .
+> View Type Intra-Episode Motion Dataset Distribution Spatial Range
+> Fixed View Static Single Fixed Pose Point Multi-Fixed View Static Discrete Poses Bounded Region Moving View Dynamic Continuous Trajectories Bounded Region
+
+To tackle this, we propose a Hierarchical Data Decou-pling strategy. We implement a real-world dynamic cam-era framework that not only employs a hybrid strategy of Multi-Fixed and Moving Views to break Camera-Base and Camera-Object couplings but also systematically injects 
+
+Multi-dimensional Diversity into the data collection pro-cess. Specifically, we explicitly vary the relative positions of objects (e.g., the pen holder) during data collection to break Object-Position coupling, ensuring the model learns robust spatial representations. Our contributions are:  
+
+> •
+
+Real-World Realization: We present a systematic real-world validation of a dynamic viewpoint data collec-tion system, bridging the gap between simulation-based paradigms (e.g., MOVE [6]) and physical deployment.  
+
+> •
+
+Shortcut Breaking: We demonstrate that our Hybrid Dynamic Data Collection strategy effectively mitigates spurious correlations (e.g., Object-Position Coupling) that naive augmentation schemes cannot resolve.  
+
+> •
+
+Transfer & Efficiency: Moreover, we show that the decoupled dynamic data learned from an auxiliary task can be efficiently transferred to enhance the robust-ness of static policies on unseen tasks, enabling high-performance generalization with only a small amount of data. II. RELATED WORK 
+
+A. Manipulation Viewpoint Robustness 
+
+Recent Vision–Language–Action (VLA) models [7], [8] achieve strong performance on manipulation benchmarks but remain fragile under camera viewpoint shifts. Improving robustness is therefore closely tied to learning view-invariant, geometry-aware, and action-relevant representations. One line of work incorporates explicit 3D or depth cues. SPA [9] pretrains a ViT with 3D spatial awareness via differ-entiable neural rendering on multi-view images. GeoAware-VLA [10] improves viewpoint invariance by combining a frozen geometry-aware encoder with a lightweight projection to the policy decoder. OG-VLA [11] renders multi-view RGB-D into canonical orthographic views and predicts 6-DoF keyframes via LLM-conditioned diffusion, enabling few-shot 3D generalization. RVT [12] maps RGB-D to multi-view virtual images and uses a Transformer to predict 3D keyframe actions efficiently. ManiVID-3D [13] further learns view-invariant RL policies via cross-view point cloud alignment and contrastive learning. Another line explicitly injects camera information into the perception–policy pipeline to disentangle viewpoint from geometry. FTM [14] adapts policies via one-shot visual fea-ture modulation. Acar et al. [15] distill multi-view teachers trained with camera randomization into single-view students for better robustness. Jiang et al. [16] encode camera extrin-sics using per-pixel Pl¨ ucker embeddings, reducing viewpoint-induced failures. Vantage [17] uses Bayesian optimization to select informative camera poses for efficient viewpoint-agnostic fine-tuning. A third line leverages self-supervised learning to enforce cross-view consistency. MV-MWM [18] learns view-masked representations and trains a world model for robust transfer. CL3R [19] combines point-cloud MAE with contrastive alignment to 2D models while unifying multi-view geometry via extrinsics. Despite these advances, simply increasing viewpoint di-versity can still induce shortcut learning. We therefore move toward a data-centric paradigm that explicitly reshapes view distributions to mitigate spurious correlations and improve spatial generalization. 
+
+B. Data Paradigm for Manipulation Viewpoint Robustness 
+
+Beyond architecture-level interventions, an emerging view is that viewpoint robustness can be substantially improved by data-centric design. Some prior works use data augmen-tation to expand the effective support of camera viewpoints, synthesizing counterfactual observations under novel poses so that the policy learns to focus on task-relevant geometry rather than viewpoint-specific appearance cues. VISTA [20] improves cross-view robustness by augmenting single-view demonstrations with zero-shot diffusion-based novel-view synthesis during policy training. RoboSplat [21] generates diverse, spatially consistent manipulation demonstrations by editing a 3D Gaussian-splatting reconstruction (including novel-view synthesis), substantially improving real-world generalization from a single demonstration. Invariance Co-training [22] boosts viewpoint robustness by co-training on real demos and cheap non-physics simulated images with contrastive invariance and camera-extrinsics regression. Another emerging direction is to compose training data by strategically selecting, mixing, and reweighting view-points/episodes to form a more informative and balanced multi-view curriculum. ADC [23] collects denser demonstra-tions by injecting real-time visual and language perturbations during teleoperation, improving compositional generalization and robustness with fewer trajectories. MOVE [6] suggests motion-based collection but leaves real-world deployment as future work. We extend this by implementing it on a real robot and adding the critical dimension of Object-Position decoupling to prevent overfitting. 
+
+C. Active Perception vs. Data-Centric Decoupling 
+
+A complementary line learns to control the viewpoint online: Vision-in-Action [24] and ActiveUMI [25] learn task-oriented head or gaze motions from human demonstrations to resolve occlusion and improve observability, echoing clas-sical next-best-view planning. Our objective is orthogonal and complementary: rather than optimizing where to look at test time, we shape the training-data distribution so that the policy becomes viewpoint-invariant, removing the camera–base and object–position shortcuts that persist under any viewing policy. The paradigms compose—an active-perception controller can sit atop a policy that our task-agnostic, broadly sampled moving-view data has already made viewpoint-robust, and we expect the same data to im-prove observability under occlusion as a side effect, though we do not evaluate this separately. III. METHODOLOGY We aim to break shortcut learning via a data collection strategy that is realizable (Fixed, Multi-Fixed, Moving) and maximizes diversity within that framework. Fig. 2 summa-rizes the overall system pipeline. 
+
+A. Problem Setup 
+
+We consider a VLA policy π(a|o, l ) that predicts action a
+
+given observation o (visual input from the wrist and environ-mental cameras) and language instruction l. The policy takes input from a wrist-mounted camera on the manipulation arm and a mobile environmental camera controlled by another robot arm. The pose Pc of the environmental camera lies within a workspace W.
+
+B. Camera Viewpoint Configurations 
+
+We define three distinct camera viewpoint configurations to systematically vary the data distribution, as illustrated in Fig. 3:  
+
+> •
+
+Fixed View: The camera remains at a single static pose throughout all episodes. This represents the standard, constrained setting.  
+
+> •
+
+Multi-Fixed View: The camera pose is static within each episode but varies discretely across episodes within a bounded region. This introduces viewpoint diversity without intra-episode motion.  
+
+> •
+
+Moving View: The camera moves continuously along trajectories within a bounded region (same as the region of Multi-Fixed View) during data collection. This de-coupling zone maximizes the variation in relative poses between the camera, robot, and objects. We hypothesize that the Moving View configuration, by pro-viding continuous viewpoint changes, is the most effective at breaking spurious correlations. 
+
+C. Multi-dimensional Diversity Injection 
+
+To prevent shortcut learning, we enforce diversity along three axes during collection (consistent with the data collec-tion settings in the experiment summary): 1) Viewpoint Diversity: Sampling Pc across Multi-Fixed and Moving configurations (random per-group camera pose and per-episode moving trajectories in our setup). 2) Object Configuration Diversity: Randomizing rela-tive poses between target and receptacle (e.g., pen and holder at diverse positions in general collection). 3) Base-Camera Decoupling: Ensuring no fixed relation-ship between the camera frame and the robot base frame via viewpoint variation (environmental camera motion in our experiments, not moving the robot base). 
+
+D. Hybrid Dynamic Data Collection Strategy 
+
+To effectively break the aforementioned couplings, we propose a Hybrid Dynamic Data Collection strategy. As detailed in the experiment summary, this strategy integrates three key components: 1) Hierarchical Viewpoint Sampling: We collect data across Fixed, Multi-Fixed, and Moving View configu-rations. While Multi-Fixed data provides stability for convergence, Moving View data acts as a regularizer to enforce spatial invariance. 2) Multi-dimensional Diversity Injection: Beyond cam-era motion (provided by hierarchical viewpoint sam-pling), we explicitly vary the relative positions of objects (e.g., target and receptacle) to break Object-Position coupling. Camera-Base decoupling is achieved by viewpoint variation (Moving and Multi-Fixed); we do not explicitly vary the robot base in our experiments. 3) Optimal Composition: We investigate the mixing ratio between Multi-Fixed and Moving data. Let k
+
+denote the Multi-Fixed part in the ratio Moving:Multi-Fixed = 1 : k. The mixture is 
+
+Dtrain = kk+1 DM ultiF ixed + 1 
+
+> k+1
+
+DM oving (1) Our experiments reveal an empirically optimal mix-ing ratio for our primary model (Gr00t n1, hereafter Gr00t): Moving:Multi-Fixed = 1:3 (we refer to it as the Golden Ratio for brevity). Exp. 4 shows the best 
+
+k can differ per architecture. IV. EXPERIMENTS 
+
+A. Experimental Setup 
+
+The experimental setup is shown in Fig. 4.  
+
+> •
+
+Platform: So-101 robot arm with a wrist-mounted cam-era for manipulation and an Airbot arm controlling the environmental eye. Images are captured with WowRobo 2 MP USB camera modules at 640 × 480 resolution and 30 FPS.  
+
+> •
+
+Task: Pick-and-place spanning a pen task (grasping a pen and inserting it into a holder, a contact-rich alignment beyond free-space placement) and a five-category multi-object task (watch, lollipop, nail clipper, tape, cube) covering varied geometry and affordances.  
+
+> •
+
+Sensing & Camera Motion: For Moving View col-lection, the environmental camera is commanded in end-effector space along continuous trajectories at a constant linear speed of 0.05 m/s, with a mean view-point angular speed of 0.198 rad/s (max 0.419 rad/s). All observations are recorded as continuous MP4 video at 30 FPS through the open-source LeRobot SO-101 data-collection pipeline, rather than as discrete JPEG/PNG snapshots.  
+
+> •
+
+Baselines: Fig. 2. System pipeline. (1) Dual-arm: The manipulation arm (with wrist camera) executes actions; the environmental camera arm observes the scene from varying viewpoints. (2) Hybrid Dynamic Data Collection: Multi-Fixed View data provide stability for convergence, Moving View data provide decoupling to break spurious correlations; they are mixed at ratio Moving:Multi-Fixed = 1 : k (e.g., k = 3 for the Golden Ratio) to form Dtrain . (3) VLA policy learning: The hybrid dataset trains a VLA policy π(a|o, l ) mapping observations and language to actions. (4) Deployment: The policy is evaluated on unseen camera poses and object configurations for robust spatial generalization.  
+
+> Fig. 3. Real-world Realization of Camera Viewpoint Configurations.
+> We implement Fixed, Multi-Fixed, and Moving Views using an environ-mental camera controlled by a separate robot arm. The Moving View configuration (Decoupling Zone) allows for continuous trajectory sampling to break spurious correlations.
+
+1) Baseline (Fixed View): Standard practice with a single static camera pose. 2) Baseline (Multi-Fixed View): Discrete static viewpoints, prone to shortcut learning. 3) Ours (Mixed Data): Hybrid strategy combining Multi-Fixed and Moving Views with diversity in-jection. 
+
+Data Collection Settings:  
+
+> •
+
+Pen Task (Multi-Fixed for Coupling Test): Collected in groups of 5 episodes. In each episode, 1 to 5 pens are grasped sequentially. Within a group, the camera pose is randomly generated but remains fixed across all 5 episodes, and the pen holder is kept at a fixed position to simulate coupling.  
+
+> •
+
+Pen Task (General): Similar to above, but for general Multi-Fixed data and Moving data, the pen and the pen holder are placed at diverse positions. For Moving data, the camera moves continuously along random trajectories in every episode.  
+
+> •
+
+Multi-Task: Collected in groups of 5 episodes, each grasping a different object (watch, lollipop, nail clipper, tape, cube block), with the target object and receptacle placed at diverse positions. All data use a single Fixed View (not Multi-Fixed).  
+
+> •
+
+Note: Pen Task episodes involve multiple grasps (1–5) 
+
+Algorithm 1 Hybrid Dynamic Data Collection Strategy 
+
+Require: Task T , Workspace W, ratio Moving:Multi-Fixed 
+
+= 1 : k (k = Multi-Fixed part, e.g. k = 3 for Golden Ratio) 
+
+Ensure: Hybrid Dataset Dtrain  
+
+> 1:
+
+Initialize Dtrain ← ∅  
+
+> 2:
+
+for episode e = 1 to N do  
+
+> 3:
+
+Sample random number r ∼ U (0 , 1)  
+
+> 4:
+
+if r < 1/(k + 1) then  
+
+> 5:
+
+Mode: Moving View (Decoupling)  
+
+> 6:
+
+Sample trajectory τc(t) within Wbounded  
+
+> 7:
+
+Move Camera Arm along τc(t) continuously  
+
+> 8:
+
+else  
+
+> 9:
+
+Mode: Multi-Fixed View (Stability)  
+
+> 10:
+
+Sample static camera pose Pc ∼
+
+Uniform (Wbounded ) 
+
+> 11:
+
+Move Camera Arm to Pc and hold  
+
+> 12:
+
+end if  
+
+> 13:
+
+Randomize object configuration Pobj (Object Diver-sity)  
+
+> 14:
+
+Collect trajectory data τdata = {(ot, a t, P tc )}Tt=0  
+
+> 15:
+
+Dtrain ← D train ∪ τdata  
+
+> 16:
+
+end for  
+
+> 17:
+
+return Dtrain 
+
+so the model captures viewpoint changes during slow camera motion. Except for the coupling-test data, we maximized diversity (object poses, instances, orienta-tions) to break potential spurious correlations. 
+
+Evaluation Settings: We generated a fixed set of 40 camera moving trajectories (for Moving Test) and 40 cam-era poses (for Multi-Fixed Test). We also defined 5 fixed target-container relative positions and 8 pen orientations (0◦, 45 ◦, ..., 315 ◦).  
+
+> •
+
+Moving Test: In the i-th try, the camera follows the 
+
+i-th trajectory from the list.  
+
+> •
+
+Multi-Fixed Test: In the i-th try, the camera is set to the i-th pose from the list.  
+
+> •
+
+Fixed Test: The camera is set to the predefined fixed pose. For Pen tasks, each group consists of 40 pick-and-place tries Fig. 4. Experimental Setup. A robot arm controls a mobile environmental eye capturing data from various viewpoints, while another one with a wrist-mounted camera performs manipulation tasks. 
+
+(1 pen per try). For Multi-Task, each group consists of 25 tries (5 tries per object type). Success rate computation: 
+
+Reported success rates are computed over 400 evaluation episodes for Pen tasks and over 100 episodes for Multi-Task (20 tries per object type × 5 object types). ID/OOD con-vention: We use in-distribution (ID) and out-of-distribution (OOD) consistently per experiment: in Exp.1, ID = fixed camera and holder as in training, OOD = moving camera; in Exp.2, ID = pen and pen holder at training position, OOD = holder shifted by one diameter (pen remains at the same position as in ID). 
+
+Training Details: All Gr00t [7] models were trained on 8 NVIDIA H800 GPUs. We used a batch size of 4 and an initial learning rate of 1e-4 with a cosine decay schedule. Training for the Pen Pick-and-Place task (2400 episodes) took approximately 34–37 hours, while the Multi-Task experiment (2400 episodes) took approximately 14 hours—the Pen episodes’ multiple grasps (1–5) yield ∼2.5 ×
+
+more frames. 
+
+Why does Moving-View work? In our opinion, Moving-View robustness stems from dense, near-uniform multi-view sampling , which we expect to hold across moderate speeds; since frame rate mainly sets the effective data density per trajectory, lowering it behaves like reducing data—success should degrade gracefully and the gap may vanish given enough episodes. What breaks this is a large inter-frame viewpoint jump (excessive speed v or speed-to-frame-rate ratio): as in Exp. 1, a Fixed-View policy under moving viewpoints misjudges its egocentric pose and mis-positions at pick/place ( 85% → 43% ), so we consider stable manipulation under arbitrarily fast or abrupt viewpoint motion to be out of scope. 
+
+B. Exp. 1: Shortcut Learning (Camera-Base Coupling) 
+
+We first evaluate whether models exhibit shortcut learning. We train on a Fixed View dataset (camera static across all episodes) and test in two settings:  
+
+> •
+
+ID-Test (Fixed): Evaluation on the same static view-point as training.  
+
+> •
+
+OOD-Test (Moving): Evaluation on dynamic, continu-ous viewpoint trajectories (Moving View). As shown in Table II and Fig. 5, the Baseline (Fixed View Data) achieves high success (85%) on ID-Test but collapses to 43% on OOD-Test (Moving), revealing severe overfitting. Our method (Mixed Data) maintains high robustness (83%) even under dynamic viewpoints (see Exp. 1 ID-Test for fixed-view retention).                   
+
+> Fig. 5. Shortcut learning (Camera-Base). While the Fixed View Baseline collapses on Moving Tests (OOD), our method maintains high performance. Error bars denote standard deviation. Here, ID = same fixed camera and holder as training; OOD = moving camera (Exp.1 convention). TABLE II
+> BREAKING THE SHORTCUT .SUCCESS RATES (%) AT 2400 SAMPLES .THE GAP BETWEEN ID AND OOD REVEALS SHORTCUT LEARNING .
+> Method ID-Test (Fixed) OOD-Test (Moving)
+> Baseline (Fixed) 85.0 43.0
+> Ours (Mixed Data) 86.0 83.0
+
+C. Exp. 2: Shortcut Learning (Object-Position Coupling) 
+
+To further investigate the mechanism of shortcut learning, we designed a controlled diagnostic experiment (probing setup) to verify Object-Position Coupling : whether the model locks onto the fixed relative position between objects (e.g., pen and holder). We trained a model on Multi-Fixed View data where, within each group, the camera pose and the pen holder position were fixed and only the pen (target object) was placed at diverse positions. We then tested in two settings:  
+
+> •
+
+ID-Test (Fixed Holder): Holder at the same position as in training; pen placed from the same (randomized) set as in training.  
+
+> •
+
+OOD-Test (Shifted Holder): Holder shifted by one diameter; pen still placed from the same randomized set (only the holder shift is controlled). As shown in Fig. 6 and Table III, the Baseline (Multi-Fixed) achieves a near-perfect 95.0% on ID-Test but drops sharply to 71.9% on OOD-Test. In contrast, our method (trained with the empirically optimal mix Moving:Multi-Fixed = 1:3) maintains high performance in both settings: 91.9% on ID-Test and 90.6% on OOD-Test. This confirms that even with diverse camera viewpoints (Multi-Fixed), if the relative position between objects (Object-Position Coupling) is not sufficiently varied, the model does not perfectly capture the true spatial relationship between the pen and the holder. Instead, it learns a spurious correlation (a shortcut) based on the absolute position of the holder or its relation to the camera/base. Our mixed data strategy successfully breaks this coupling, enabling robust generalization.                        
+
+> Fig. 6. Verification of Object-Position Coupling. The significant drop in performance when the pen holder is shifted (OOD) demonstrates that the model relies on fixed relative positions rather than true spatial understanding. Our method (Green) successfully breaks this coupling. TABLE III
+> OBJECT -P OSITION COUPLING VERIFICATION .SUCCESS RATES (%)
+> SHOWING THE IMPACT OF SHIFTING THE OBJECT CONFIGURATION .WHILE THE BASELINE FAILS ON OOD, OUR METHOD REMAINS ROBUST .
+> Test Condition Baseline Ours (Mixed 1:3)
+> ID (Fixed Holder) 95.0 ±3.5 91.9 ±2.4 OOD (Shifted Holder) 71.9 ±5.2 90.6 ±6.3
+
+D. Exp. 3: The Hybrid Dynamic Data and The Golden Ratio of Composition 
+
+To identify a good data composition strategy, we conduct this experiment on the Pen Pick-and-Place task (grasping a pen and inserting it into a pen holder), which allows for rapid policy convergence. We use Gr00t n1 [7] (hereafter Gr00t) as the primary model; the ratio that maximizes its performance (Moving:Multi-Fixed = 1:3) we call the Golden Ratio below. (Exp. 4 shows that the optimal ratio can vary by architecture.) We investigate the impact of the mixing ratio between Multi-Fixed View and Moving View data. The results reveal a non-trivial insight: 1) Pure Moving Data is Insufficient (54.8%): Although our hypothesis favors Moving View for breaking spu-rious correlations, training solely on dynamic data performs poorly: the high variance in visual input makes policy convergence difficult. 2) Multi-Fixed Data is a Strong Baseline (80.5%): 
+
+Evaluating all models in this subsection on the Moving Test set, pure Multi-Fixed data reaches 80.5% (Ta-ble IV), unexpectedly outperforming pure Moving data (54.8%) on that same test. 3) Mixture is Optimal for Gr00t (89.0%): Mixing Multi-Fixed and Moving data further improves the success rate: as shown in Fig. 7 and Table IV, for Gr00t a strategic mix of Moving:Multi-Fixed = 1:3 
+
+yields the best performance. This confirms that while Multi-Fixed data provides stability for convergence, Moving View data acts as a critical regu-larizer to enforce spatial invariance.                       
+
+> Fig. 7. Impact of Data Composition Ratio. For Gr00t, the success rate peaks at Moving:Multi-Fixed = 1:3 (Golden Ratio). Shaded regions denote standard deviation. TABLE IV
+> COMPOSITION MATTERS .SUCCESS RATES (%) BY
+> MOVING :M ULTI -F IXED RATIO . G OLDEN RATIO (1:3) IS FOR GR00 T.
+> Ratio (Moving:Multi-Fixed) 1:0 1:1 1:3 0:1
+> Success Rate (%) 54.8 83.3 89.0 80.5 Std 10.7 7.1 5.7 6.1
+
+E. Exp. 4: Transfer, Sample Efficiency & Universality of the Data Strategy 1) Cross-Task Spatial Generalization Transfer: To evalu-ate sample efficiency and transferability, we conduct a Multi-Object Pick-and-Place experiment. The multi-task training data consist of Fixed View data only (a single static camera pose; not Multi-Fixed) over five object types: watch, lollipop, nail clipper, tape, and cube block. We compare two settings:  
+
+> •
+
+Baseline (Fixed Data): Trained on pure Fixed-View multi-task data (the five objects above).  
+
+> •
+
+Ours (Mixed Data): Trained on a mix of 50% Fixed-View multi-task data and 50% Auxiliary Pen Data Fig. 8. Cross-Task Spatial Generalization Transfer. Our method (Green), leveraging auxiliary data, consistently outperforms the Baseline (Red) on the challenging Moving Test set, achieving high success rates with fewer task-specific episodes. Shaded regions denote standard deviation. 
+
+(collected with Moving:Multi-Fixed = 1:3, the Golden Ratio for Gr00t). This setup tests whether the spatial know-how learned from the low-cost auxiliary Pen task (single object type, minimal setup) can robustify a static policy on new tasks. To reveal the underlying mechanism, we analyze the learned policy via skill decoupling:  
+
+> •
+
+Semantic Source: The model learns what to grasp (semantics/affordance) from the Fixed-View Multi-Task data. However, it tends to overfit to the camera pose.  
+
+> •
+
+Spatial Source: The model learns “how to perceive” (spatial representation/hand-eye coordination) from the Moving-View Pen data, which acts as an auxiliary data source for spatial invariance.  
+
+> •
+
+Transfer: During mixed training, the model composes these skills. It uses the spatial perception capability learned from the Pen data to guide the grasping actions learned from the Multi-Task data, enabling it to grasp unseen objects (e.g., watches) under dynamic view-points. Table V and Fig. 8 show that our method consistently achieves higher performance than the baseline on the Moving Test set. 
+
+TABLE V 
+
+CROSS -T ASK SPATIAL GENERALIZATION TRANSFER . SUCCESS RATES (%) ON MOVING TEST SET . B ASELINE USES PURE FIXED -V IEW TASK DATA ; O URS AUGMENTS WITH AUXILIARY PEN DATA .                            
+
+> Episodes 600 1200 1800 2400
+> Baseline (Fixed Data) 18.0 ±5.2 31.0 ±11.5 28.0 ±5.7 43.0 ±16.1
+> Ours (Mixed Data) 51.0 ±7.6 62.0 ±12.0 71.0 ±10.5 83.0 ±6.0
+
+Fig. 9. Universality of the Data Strategy. All evaluated architectures (ACT, Diffusion, and VLA models including Pi0 and Gr00t) benefit from the mixed data strategy, with Gr00t showing the highest peak performance. Shaded regions denote standard deviation. 
+
+2) Universality of the Data Strategy (Pen Pick-and-Place): We revisit the Pen Pick-and-Place task to evaluate different architectures, including ACT [26], Diffusion [27], and Pi0 ( π0.5) [8]. We compare their performance using mix (Moving:Multi-Fixed = 1:1, 1:3, 1:11) versus pure (Multi-Fixed, Moving) data. Note that we conduct basic tuning but not exhaustive optimization on the ACT, Diffusion, and Pi0 models, as our focus is to demonstrate that the data strategy benefits all architectures rather than to compare model capacity. As shown in Fig. 9 and Table VI, the convergence diffi-culty with pure Moving data is consistently observed across architectures, while Multi-Fixed data yields uniformly better performance. Our results suggest that it is essential to strike a balance between learning efficiency and data diversity, where the latter introduces little to no degradation given sufficient data. Furthermore, the benefits of our proposed Hybrid Dynamic Data Collection strategy are universal across architectures. Although the optimal Moving:Multi-Fixed ratio varies (e.g., 1:1 for Diffusion, 1:3 for Gr00t), all models achieve substan-tial performance gains (e.g., Diffusion +26.8%, Pi0 +13.8%) by incorporating Moving-View data. 
+
+TABLE VI 
+
+UNIVERSAL BENEFIT . ALL MODELS IMPROVE WITH MIXED DATA .BEST MIX DENOTES PERFORMANCE AT THE OPTIMAL RATIO FOR EACH MODEL .
+
+Model Multi-Fixed Best Mix Ratio Gain 
+
+ACT 39.4 ± 6.3 47.5 ± 4.6 1:3 +8.1 Diffusion 33.8 ± 21.8 60.6 ± 7.2 1:1 +26.8 
+
+Pi0 45.0 ± 8.9 58.8 ± 12.5 1:11 +13.8 
+
+Gr00t (VLA) 80.5 ± 6.1 89.0 ± 5.7 1:3 +8.5 V. CONCLUSIONS In summary, we provide systematic real-world validation for the proposed Hybrid Dynamic Data Collection system. We demonstrate that spatial generalization requires more than just moving the camera; it requires breaking implicit couplings. By implementing our hybrid dynamic data strat-egy in the real world, we enable VLAs to mitigate the pitfall of shortcut learning. Our experiments demonstrate that Multi-Fixed data ensures stable convergence, whereas Moving View data enhances data diversity, with their combination achieving the best results, and this beneficial pattern holds universally across different architectures. Furthermore, we demonstrate that the core manipulation capability under moving views learned from hybrid dynamic pen pick-and-place data can be robustly transferred to new tasks, with improved sample efficiency as a favorable side effect. 
+
+Limitations and Future Work. Our evaluation focuses on table-top pick-and-place (a five-category multi-object task) and contact-rich alignment (pen insertion); the data strategy is task-agnostic and we expect transfer to longer-horizon, contact-rich tasks, though systematic validation remains fu-ture work. Methodologically, a more fundamental step is to lift moving viewpoints into an online module inside 
+
+the VLA—policy-conditioned active viewpoint control (a learned next-best-view) that resolves occlusion while retain-ing the viewpoint invariance our data provides. REFERENCES [1] S. Fei, S. Wang, J. Shi, Z. Dai, J. Cai, P. Qian, L. Ji, X. He, S. Zhang, Z. Fei, J. Fu, J. Gong, and X. Qiu, “Libero-plus: A progressive robustness benchmark for visual-language-action models,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2026, pp. 38 574–38 583. [2] X. Zhou, Y. Xu, G. Tie, Y. Chen, G. Zhang, D. Chu, P. Zhou, and L. Sun, “Libero-pro: Towards robust and fair evaluation of vision-language-action models beyond memorization,” arXiv preprint arXiv:2510.03827 , 2025. [3] A. Xie, L. Lee, T. Xiao, and C. Finn, “Decomposing the generalization gap in imitation learning for visual robotic manipulation,” arXiv preprint arXiv:2307.03659 , 2023. [4] Y. Chen, Z. Zhan, X. Lin, Z. Song, H. Liu, Q. Lyu, Y. Zu, X. Chen, Z. Liu, T. Pu et al. , “Radar: Benchmarking vision-language-action generalization via real-world dynamics, spatial-physical intelligence, and autonomous evaluation,” arXiv preprint arXiv:2602.10980 , 2026. [5] J. Engel, K. Somasundaram, M. Goesele, A. Sun, A. Gamino, A. Turner, A. Talattof, A. Yuan, B. Souti, B. Meredith et al. , “Project aria: A new tool for egocentric multi-modal ai research,” arXiv preprint arXiv:2308.13561 , 2023. [6] H. Wang, C. B. Chen, Y. Yue, D. Tao, T. Guo, S. Xie, D. Huang, S. Song, G. Yao, and G. Huang, “Move: A simple motion-based data collection paradigm for spatial generalization in robotic manipulation,” 2025. [Online]. Available: https://arxiv.org/abs/2512.04813 [7] J. Bjorck, F. Casta˜ neda, N. Cherniadev, X. Da, R. Ding, L. Fan, Y. Fang, D. Fox, F. Hu, S. Huang et al. , “Gr00t n1: An open foundation model for generalist humanoid robots,” arXiv preprint arXiv:2503.14734 , 2025. [8] P. Intelligence, K. Black, N. Brown, J. Darpinian, K. Dhabalia, D. Driess, A. Esmail, M. Equi, C. Finn, N. Fusai, M. Y. Galliker, D. Ghosh, L. Groom, K. Hausman, B. Ichter, S. Jakubczak, T. Jones, L. Ke, D. LeBlanc, S. Levine, A. Li-Bell, M. Mothukuri, S. Nair, K. Pertsch, A. Z. Ren, L. X. Shi, L. Smith, J. T. Springenberg, K. Stachowicz, J. Tanner, Q. Vuong, H. Walke, A. Walling, H. Wang, L. Yu, and U. Zhilinsky, “ π0.5: a vision-language-action model with open-world generalization,” 2025. [Online]. Available: https://arxiv.org/abs/2504.16054 [9] H. Zhu, H. Yang, Y. Wang, J. Yang, L. Wang, and T. He, “Spa: 3d spatial-awareness enables effective embodied representation,” arXiv preprint arXiv:2410.08208 , 2024. [10] A. Abouzeid, M. Mansour, Z. Sun, and D. Song, “Geoaware-vla: Im-plicit geometry aware vision-language-action model,” arXiv preprint arXiv:2509.14117 , 2025. [11] I. Singh, A. Goyal, S. Birchfield, D. Fox, A. Garg, and V. Blukis, “Og-vla: 3d-aware vision language action model via orthographic image generation,” arXiv e-prints , pp. arXiv–2506, 2025. [12] A. Goyal, J. Xu, Y. Guo, V. Blukis, Y.-W. Chao, and D. Fox, “Rvt: Robotic view transformer for 3d object manipulation,” in Conference on Robot Learning . PMLR, 2023, pp. 694–710. [13] Z. Li, P. Qu, Y. Jia, S. Zhou, H. Ge, J. Cao, J. Zhou, G. Zhou, and J. Ma, “Manivid-3d: Generalizable view-invariant reinforcement learning for robotic manipulation via disentangled 3d representations,” 
+
+IEEE Robotics and Automation Letters , 2026. [14] W. Li, Q. Zhang, R. Zhai, L. Lin, and G. Wang, “Vla models are more generalizable than you think: Revisiting physical and spatial modeling,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2026, pp. 35 025–35 035. [15] C. Acar, K. Binici, A. Tekirda˘ g, and Y. Wu, “Visual-policy learning through multi-camera view to single-camera view knowledge distil-lation for robot manipulation tasks,” IEEE Robotics and Automation Letters , vol. 9, no. 1, pp. 691–698, 2023. [16] T. Jiang, J. Ji, X. Tan, J. Fang, A. Bhattad, V. Guizilini, and M. R. Walter, “Do you know where your camera is? View-invariant policy learning with camera conditioning,” in IEEE International Conference on Robotics and Automation , 2026. [17] S. Vasudevan, S. Sagar, and R. Senanayake, “Agnostic manip-ulation policies with strategic vantage selection,” arXiv preprint arXiv:2506.12261 , 2025. [18] Y. Seo, J. Kim, S. James, K. Lee, J. Shin, and P. Abbeel, “Multi-view masked world models for visual robotic manipulation,” in Interna-tional Conference on Machine Learning . PMLR, 2023, pp. 30 613– 30 632. [19] W. Cui, C. Zhao, Y. Chen, H. Li, Z. Zhang, D. Zhao, and H. Wang, “Cl3r: 3d reconstruction and contrastive learning for enhanced robotic manipulation representations,” arXiv preprint arXiv:2507.08262 , 2025. [20] S. Tian, B. Wulfe, K. Sargent, K. Liu, S. Zakharov, V. C. Guizilini, and J. Wu, “View-invariant policy learning via zero-shot novel view synthesis,” in Conference on Robot Learning , 2024. [21] S. Yang, W. Yu, J. Zeng, J. Lv, K. Ren, C. Lu, D. Lin, and J. Pang, “Novel demonstration generation with gaussian splatting enables ro-bust one-shot manipulation,” in Proceedings of Robotics: Science and Systems , 2025. [22] J. Yang, C. Finn, and D. Sadigh, “Invariance co-training for robot visual generalization,” arXiv preprint arXiv:2512.05230 , 2025. [23] S. Huang, Y. Liao, S. Feng, S. Jiang, S. Liu, H. Li, M. Yao, and G. Ren, “Adversarial data collection: Human-collaborative perturba-tions for efficient and robust robotic imitation learning,” arXiv preprint arXiv:2503.11646 , 2025. [24] H. Xiong, X. Xu, J. Wu, Y. Hou, J. Bohg, and S. Song, “Vision in action: Learning active perception from human demonstrations,” in 
+
+Conference on Robot Learning , 2025. [25] Q. Zeng, C. Li, J. St. John, Z. Zhou, J. Wen, G. Feng, Y. Zhu, and Y. Xu, “Activeumi: Robotic manipulation with active perception from robot-free human demonstrations,” arXiv preprint arXiv:2510.01607 ,2025. [26] T. Z. Zhao, V. Kumar, S. Levine, and C. Finn, “Learning fine-grained bimanual manipulation with low-cost hardware,” 2023. [Online]. Available: https://arxiv.org/abs/2304.13705 [27] C. Chi, S. Feng, Y. Du, Z. Xu, E. Cousineau, B. Burchfiel, and S. Song, “Diffusion policy: Visuomotor policy learning via action diffusion,” in 
+
+Proceedings of Robotics: Science and Systems , 2023.

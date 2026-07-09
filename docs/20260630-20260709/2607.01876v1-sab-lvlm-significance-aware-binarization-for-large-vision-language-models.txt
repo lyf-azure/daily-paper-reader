@@ -1,0 +1,671 @@
+Title: SAB-LVLM: Significance-Aware Binarization for Large Vision-Language Models
+
+URL Source: https://arxiv.org/pdf/2607.01876v1
+
+Published Time: Fri, 03 Jul 2026 00:44:15 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+> IEEE COMPUTER SOCIETY JOURNAL, VOL. XX, NO. X, 2026 1
+
+# SAB-LVLM: Significance-Aware Binarization for Large Vision-Language Models 
+
+Qi Lyu 1,2,3 †, Jiahua Dong 4†, Baichen Liu 1,2 , Xudong Wang 1,2,3 , Mingfei Han 4, Yulun Zhang 5,Fahad Shahbaz Khan 4, Salman Khan 4, Lianqing Liu 1,2 , and Zhi Han 1,2 
+
+1State Key Laboratory of Robotics and Intelligent Systems 
+
+2Shenyang Institute of Automation, Chinese Academy of Sciences 
+
+3University of Chinese Academy of Sciences 
+
+4Mohamed bin Zayed University of Artificial Intelligence 
+
+5Shanghai Jiao Tong University 
+
+✦
+
+Abstract —Large Vision-Language Models (LVLMs) have achieved re-markable progress in multimodal understanding, yet their enormous parameter scale and cross-modal computation incur substantial mem-ory and latency overhead, severely limiting real-world deployment on resource-constrained devices. Binarization offers an attractive solution by drastically reducing storage and computational costs. However, ex-isting binarization methods neglect the varying importance of weights across different layers and modalities. This causes parameters irrelevant to downstream tasks to be unnecessarily retained, whereas modality-critical weights may not be adequately optimized, resulting in significant performance degradation. To address these challenges, we develop a novel Significance-Aware Binarization for Large Vision-Language Models (SAB-LVLM). Specifically, after constructing Hessian matrices for textual and visual inputs, we propose a spatial significance map to distinguish full-precision weights activated under a single modality from those activated across modalities. We then devise a modality-guided integration strategy to obtain the significance-aware binarization map, which measures weight significance across layers and modalities. Subsequently, this binarization map is incorporated into the binarization objective as an error reweighting term, and binarization fitting is per-formed through an alternating significance-weighted update scheme. Extensive experiments illustrate the superiority of our SAB-LVLM over existing binary PTQ methods under an approximately 1-bit compression constraint. Our code is accessible at https://github.com/LyuQi127/SAB LVLM. 
+
+Index Terms —Binarization, post-training quantization, large vision-language models. 
+
+1 INTRODUCTION 
+
+In recent years, large language models (LLMs) built upon the transformer architecture have achieved state-of-the-art results on a broad spectrum of natural language process-ing tasks [1]. Their strong empirical performance primar-ily stems from their enormous parameter counts, which frequently reach tens of billions. For instance, the open pretrained transformer (OPT) family [2] provides variants scaling up to 66 billion parameters, while the LLaMA se-ries [3] includes even larger versions such as LLaMA3-70B. Despite their effectiveness, these models impose an immense memory footprint and computational burden. For example, running a 70B model in full precision requires 
+
+> †
+
+Qi Lyu and Jiahua Dong contributed equally to this work. 
+
+over 130 GB of memory, which poses serious challenges for deployment on resource-constrained mobile devices and restricts the widespread adoption of LLMs. To address these limitations, numerous compression techniques [4]–[6] have been developed for LLMs, such as weight quantization [7], [8], network pruning [9], [10], knowledge distillation [11], [12], and low-rank factor-ization [13], [14]. Among them, binarization is particu-larly notable since it reduces each parameter to approxi-mately one bit, achieving an extremely high level of stor-age efficiency [15]. The post-training quantization (PTQ) framework enables the conversion of full-precision models into low-bit counterparts without incurring the substan-tial cost of retraining. As a PTQ approach, binarization enables approximately 1-bit weight quantization. Recent approaches [16]–[18] within this framework, including PB-LLM [16] and BiLLM [17], aim to mitigate performance degradation by identifying parameters that are most influ-ential to model accuracy and applying refined optimiza-tion strategies or selective higher-precision representations, thus striking a more favorable trade-off between compres-sion efficiency and task performance. Additionally, ARB-LLM [18] introduces an alternating refinement strategy for binarization that iteratively adjusts the binary parameters to substantially decrease the quantization error. Despite these advances, it remains challenging to di-rectly extend existing PTQ methods to large vision-language models (LVLMs). Unlike LLMs, LVLMs integrate visual encoders with large language backbones, requiring precise cross-modal alignment between visual and textual represen-tations. Under such settings, model parameters from dif-ferent layers and modalities contribute unevenly to down-stream multimodal tasks. However, most PTQ approaches focus solely on minimizing the global weight quantization error after post-training, overlooking the heterogeneous im-portance of weights across layers and modalities, as shown in Fig. 1(a)(b). As a result, task-irrelevant encoding param-eters may be mistakenly preserved, while modality-critical weights may be insufficiently optimized, leading to severe performance degradation under weight binarization. To address the aforementioned challenges, we propose          
+
+> arXiv:2607.01876v1 [cs.CV] 2 Jul 2026 IEEE COMPUTER SOCIETY JOURNAL, VOL. XX, NO. X, 2026 2Full Precision
+> Weight
+> Low-Bit
+> Weight
+> ‖𝐖 −𝐖 ‖ி
+> ଶ
+> 𝐖 𝐖
+> Objective
+> Loss
+> ‖𝚲 ⊙ ( 𝐖 −𝐖 )‖ ி
+> ଶ
+> Full Precision
+> Weight
+> Low-Bit
+> Weight
+> 𝐖 𝐖
+> Objective
+> Loss
+> Ours
+> Other Methods
+
+(a) Comparison between ours method and other methods. T from textual inputs T from visual inputs  
+
+> 1000000000 2017
+
+# . .斯喜. 
+
+## ... 
+
+> 100
+> 中.中中,产宁事.中
+> 王三中
+
+# .支宁华新村安里阳昌营业营则陈庄 
+
+> 1055
+
+A of self-attention 
+
+output projection A of self-attention 
+
+value projection 
+
+(b) Visualization results of Γ
+
+and Λ.
+
+(c) Performance comparison on the MMStar Benchmark.    
+
+> Fig. 1. (a): Comparison between the proposed SAB-LVLM and the other methods. (b): The top is the visualization results of spatial significance map
+> Γfrom textual inputs and visual inputs at the 0-th self-attention query projection. The bottom is the visualization results of 0-th self-attention output projection and self-attention value projection. (c): Comparison of performance across the Qwen2.5-VL family on the MMStar benchmark.
+
+a novel Significance-Aware Binarization for Large Vision-Language Models ( SAB-LVLM ), which represents an early attempt at achieving binarization for LVLMs. Firstly , we separately feed textual and visual calibration data into LVLMs. Based on the corresponding hidden states, we construct Hessian matrices to evaluate the significance of each full-precision weight. Secondly , we employ a spatial significance map to distinguish weights activated under a single modality from those activated by inputs from differ-ent modalities. Furthermore, we perform modality-guided significance integration using a modality integration score, yielding the final significance-aware binarization map. Un-like existing PTQ approaches [19], [20], as presented in Fig. 1(a), we inject the significance-aware binarization map into the binarization objective as an error reweighting term. 
+
+Finally , we perform binarization fitting through alternat-ing significance-weighted update scheme. As depicted in Fig. 1(c), extensive experiments on representative LVLM benchmarks demonstrate that the proposed SAB-LVLM consistently outperforms existing binary PTQ approaches under an approximately 1-bit constraint, achieving superior performance on downstream tasks while preserving com-pression efficiency.  
+
+> •
+
+We propose a novel Significance-Aware Binarization for Large Vision-Language Models (SAB-LVLM). To the best of our knowledge, this work represents an early exploration of weight binarization for LVLMs.  
+
+> •
+
+We design a spatial significance map to identify weights activated under a single modality from those activated across modalities, and devise a modality-guided integration to obtain the significance-aware binarization map.  
+
+> •
+
+We develop an alternating significance-weighted up-date scheme to perform binarization fitting. Exper-iments on representative LVLM benchmarks verify that our SAB-LVLM outperforms existing binary PTQ approaches. 
+
+2 RELATED WORK 
+
+2.1 Post-Training Quantization 
+
+Post-training quantization (PTQ) achieves significant re-ductions in model storage overhead, GPU memory con-sumption, and inference costs by performing low-bit dis-cretization directly on a pre-trained model without train-ing [7], [20], [21]. Compared to quantization-aware train-ing (QAT) [22], [23], PTQ eliminates the need for costly retraining processes, making it particularly well-suited for deploying large-parameter language models and vision-language models [24]. The primary objective of PTQ is to minimize quantization error without retraining [8], [25], [26]. BRECQ [21] advances PTQ to lower bits through block-level reconstruction. ZeroQuant [27] proposes an ef-ficient and economical PTQ workflow for large-scale Trans-formers. GPTQ [4] employs layer-wise quantization using approximate second-order information, becoming a repre-sentative method for LLMs. SmoothQuant [7] enhances 8-bit quantization stability by smoothly migrating activation outliers to the weight side. Recent works [5], [28]–[30] push PTQ toward ultra-low-bit quantization, particularly binary approaches. PB-LLM [16] showed that naive binarization severely harms LLMs and that a small set of salient weights should be preserved at higher precision. BiLLM [17] system-atically introduces 1-bit PTQ into LLMs through structured significant weight selection and binary residual approxima-tion. ARB-LLM [18] proposed alternating refined binariza-tion to progressively update binarization parameters and reduce the distribution gap between binarized and full-precision weights. However, existing binary PTQ methods primarily focus on LLMs [15], while relevant research on LVLMs remains scarce. 
+
+2.2 Large Vision-Language Models 
+
+Large Vision-Language Models (LVLMs) extend LLMs [1], [31]–[35] to visual understanding by coupling a vision en-coder with a large language model through lightweight alignment modules. Early efforts [36]–[38] mainly focused on bridging a pretrained vision encoder and a pretrained LLM through lightweight cross-modal connectors and vi-sual instruction tuning, so that language models could ac-cept visual inputs and perform general image-conditioned reasoning. The Qwen family [32], [39], as powerful open-source LLMs, have been widely adopted as the backbone of LVLMs. BLIP-2 [36] uses Q-Former to connect frozen visual encoders and frozen LLMs. InstructBLIP [37] builds upon this by introducing instruction-aware visual queries. IEEE COMPUTER SOCIETY JOURNAL, VOL. XX, NO. X, 2026 3Calibration Data 
+
+## 𝑧 
+
+> Model
+
+Calculate 
+
+Significance 
+
+Unimodal 
+
+Low 
+
+Sparsity 
+
+High 
+
+Sparsity 
+
+> Normalization
+
+## Dot 
+
+## 1 − Dot 
+
+## 𝑟 
+
+## 𝑟 
+
+## ⨁⨀
+
+𝓛 = || 𝜦 ⊙ ( )|| ி
+
+Spatial Significance Map 
+
+𝜦 ∈ ℝ ௡×௠
+
+𝜕 𝓛 
+
+𝜕 = 0 
+
+𝑊 
+
+## 𝜌 
+
+## 1-𝜌 
+
+𝑛 × 𝑚 × 𝑧 𝑛 × 𝑚 
+
+𝑛 × 𝑚 
+
+𝑛 × 𝑚 
+
+## 𝜌 
+
+Modality-Guided Significance Integration 
+
+Unimodality 
+
+Multimodality 
+
+> Fig. 2. Overview of the proposed SAB-LVLM. The upper details the calculation process for the Spatial Significance Map: Calibrated data from different modalities are input into the model separately to compute their respective sensitivities, followed by the calculation of the Spatial Significance Map. The lower describes Modality-Guided Significance Integration and Alternating Significance-Weighted Update.
+
+LLaVA [38] advances this approach toward more gen-eral multimodal dialogue and reasoning through large-scale visual instruction fine-tuning. In recent years, modern LVLMs [39], [40] have acquired powerful perception and reasoning capabilities through extensive training, and have achieved success in numerous downstream tasks, such as visual question answering (VQA) [41], multimodal dia-logue [42], visual grounding [43], and embodied interac-tion [44]. These downstream tasks require both perceptual and linguistic reasoning abilities. However, this multimodal capability also incurs substantial deployment costs. To ad-dress this limitation, a common approach involves com-pressing models through paradigms such as distillation [12], PTQ [45], and QAT [46]. Among these, PTQ typically offers lower training costs and better plug-and-play capabilities, yet it still struggles to be deployed on edge devices. Bina-rization advances PTQ to the approximate 1-bit precision, thereby further reducing storage requirements and compu-tational overhead. 
+
+3 METHODOLOGY 
+
+3.1 Preliminary and Overview 
+
+Preliminary: Binarization [17], [18] in large vision-language models (LVLMs) compresses continuous weights into binary values ( e.g. , ±1), thereby reducing storage requirements and computational overhead. Given a full-precision weight 
+
+W ∈ Rn×m in the original LVLMs, we define its binariza-tion objective as: 
+
+L(W, cW) = ∥W − cW∥2 
+
+> F
+
+, (1) where n and m denote the row and column dimensions of W. cW ∈ Rn×m represents the low-bit weight, and it is approximated as 1-bit in this paper. To perform binarization, we follow [18] and represent cW using a T -order binary expansion strategy: 
+
+cW =
+
+> T
+
+X
+
+> ϵ=1
+
+ αϵr (αϵc)⊤ ⊙ Bϵ, (2) where Bϵ ∈ { +1 , −1}n×m is the binary basis at order ϵ,
+
+αϵr ∈ Rn and αϵc ∈ Rm denote the row-wise and column-wise scaling vectors at order ϵ. ⊙ indicates the Hadamard product. Generally, most existing binarization methods [15], [16], [45] focus solely on minimizing the weight quanti-zation error L(W, cW) in Eq. (1) after post-training. They overlook the fact that model weights from different layers and modalities contribute differently to downstream tasks. Evidently, this phenomenon may lead to the mistaken re-tention of task-irrelevant encoding parameters, resulting in significant performance degradation. 
+
+Overview: To address the above challenge, we pro-pose a significance-aware binarization map Λ ∈ Rn×m
+
+to evaluate the contribution of weights across layers and modalities during binarization. Λ forces the optimization to preserve important weights based on their significance, enhancing the representational capacity of the binarized low-bit weights. Thus, we utilize √Λ to reweight Eq. (1): 
+
+L(W, cW) = ∥√Λ ⊙ (W − cW)∥2 
+
+> F
+
+. (3) As shown in Fig. 2, we present the algorithmic pipeline of our model for obtaining Λ during post-training. First, we evaluate the sensitivity of model weights to different modal-ities based on activation values for text and image inputs, respectively. We then characterize the modal preference of local weights by computing the sparsity of sensitivity of different modalities. Second, we further compute the global preference of the weights. Finally, by integrating local and global preference, we compute dynamic sensitivity sparsity factor √Λ to perform weighting to the Eq. (1) and then optimize cW through an alternating iteration process. 
+
+3.2 Significance-Aware Binarization Map 
+
+As introduced in [47], [48], sensitivity plays an important role in determining weight saliency during binarization. IEEE COMPUTER SOCIETY JOURNAL, VOL. XX, NO. X, 2026 4
+
+Algorithm 1 Pipeline of The Proposed SAB-LVLM 
+
+Input: Full-precision weights W ∈ Rn×m, calibration data 
+
+X, binarization order T , damping coefficient η, sparsity threshold τ , and iterations N ;
+
+Output: Low-bit weights cW ∈ Rn×m.
+
+▷ Significance-Aware Binarization Map (sec. 3.2)  
+
+> 1:
+
+Obtain {Ht, Hv } via Eq. (4);  
+
+> 2:
+
+Obtain S via Eq. (5);  
+
+> 3:
+
+Obtain Γ via Eq. (7);  
+
+> 4:
+
+Compute r via Eq. (8);  
+
+> 5:
+
+Output Λ via Eq. (10); 
+
+▷ Alternating Significance-Weighted Update (sec. 3.3)  
+
+> 10:
+
+for ϵ = 1 , . . . , T do  
+
+> 11:
+
+Obtain fW = W − cW; 
+
+> 12:
+
+Obtain Bϵ = sign( fW); 
+
+> 13:
+
+Follow [18] to initialize {αϵr , αϵc}; 
+
+> 14:
+
+for n = 1 , 2, . . . , N do  
+
+> 15:
+
+Obtain αϵr [i] via Eq. (12);  
+
+> 16:
+
+Obtain αϵc[j] via Eq. (13);  
+
+> 17:
+
+end for  
+
+> 18:
+
+cW ← cW +  αϵr (αϵc)⊤ ⊙ Bϵ ⊙ M g ; 
+
+> 19:
+
+end for  
+
+> 20:
+
+Return cW.Inspired by these works, we utilize the Hessian matrix to quantify the sensitivity of weights with respect to dif-ferent modalities for the significance-aware binarization map Λ. Specifically, we first sample K pairs of samples 
+
+X = {xtk, xvk}Kk=1 from COCO 2017 [49] as calibration data, where xtk and xvk represent the textual and visual modalities of the k-th sample. Subsequently, we input the k-th calibration sample {xtk, xvk} into LVLM to obtain 
+
+{Etk, Evk}. Here, Etk ∈ Rlp×m and Evk ∈ Rlp×m denote the hidden states of textual and visual modalities, and lp is the token length. After constructing the Hessian matrices 
+
+Htk = 2( Etk)⊤Etk ∈ Rm×m and Hvk = 2( Evk)⊤Evk ∈ Rm×m
+
+for the k-th sample, we aggregate them over all samples to obtain Ht, Hv ∈ Rm×m:
+
+Ht =
+
+> K
+
+X
+
+> k=1
+
+Htk + ηtI, Hv =
+
+> K
+
+X
+
+> k=1
+
+Hvk + ηv I, (4) where I is the identity matrix, and {ηt, η v } denote the damping coefficients used to ensure numerical stability. In this paper, we set ηt = Tr( PKk=1 Htk)/m and ηv =Tr( PKk=1 Hvk)/m . Then, we employ Hessian matrices to compute sensitivity matrix S ∈ Rn×m×z , and Sij ∈ Rz is defined as the (i, j )-th element of S:
+
+Sij = Concat( Stij , Svij ), (5) 
+
+Stij = W2 
+
+> ij
+
+/(Htjj )−2, Svij = W2 
+
+> ij
+
+/(Hvjj )−2, (6) where z is the number of modalities, and we set z =2 for textual and visual modalities. Concat( ·) denotes the concatenation operation. Wij is the (i, j )-th element of the weight W, Htjj and Hvjj are the (j, j )-th entry of Ht and 
+
+Hv .
+
+3.2.1 Spatial Significance Map. 
+
+To evaluate the significance of the full-precision weight W
+
+at different spatial encoding locations, we propose to con-struct a spatial significance map Γ ∈ Rn×m by measuring the sparsity of S. As a result, the (i, j )-th element Γij of Γ
+
+can be formulated as follows: 
+
+Γij =
+
+√z − ∥S ij ∥1 
+
+> ∥S ij ∥2
+
+√z − 1 ∈ (0 , 1) , (7) where ∥S ij ∥1 = Pzu=1 Suij and ∥S ij ∥2 =
+
+Pzu=1 (Suij )2
+
+1/2
+
+denote the ℓ1 and ℓ2 norms of Sij . As can be seen from Eq. (7), when the (i, j )-th weight Wij is activated only by inputs from a single modality, ∥S ij ∥1/∥S ij ∥2 → 1,corresponding to Γij → 1. Otherwise, when the (i, j )-th weight Wij is activated under inputs from different modalities, ∥S ij ∥1/∥S ij ∥2 → √z, corresponding to Γij → 0.Therefore, Γij approaches 1 when Sij concentrates on a single modality (unimodality), and Γij approaches 0 when 
+
+Sij spreads across modalities (multimodality). 
+
+3.2.2 Modality-Guided Significance Integration. 
+
+Although Γ in Eq. (7) measures spatial significance of en-coding weights, it inherently biases the binarization process toward single-modality information, thus neglecting the complementary interactions across multiple modalities. To address this challenge, we leverage a modality integration score r ∈ R to perform modality-guided significance inte-gration. In this paper, we employ the sensitivity matrix S to compute r:
+
+r =
+
+P 
+
+> i,j
+
+(Stij + Svij ) · M uni 
+
+> ij
+
+P 
+
+> i,j
+
+(Stij + Svij ) ∈ (0 , 1) , (8) 
+
+Muni ij =
+
+1, if Γij > τ, 
+
+0, otherwise,  (9) where τ is the threshold for controlling sparsity. If Γij > τ ,we consider the (i, j )-th element Wij tends to be activated under a single modality; otherwise, it tends to be acti-vated under inputs from different modalities. Therefore, the significance-aware binarization map Λ ∈ Rn×m is defined as follows: 
+
+Λ = r · Γ|{z} 
+
+> Unimodal
+
++ (1 − r) · (1 − Γ)
+
+| {z }
+
+> Multimodal
+
+. (10) Evidently, larger values of Λ in Eq. (10) impose a greater penalty on the quantization error in Eq. (3). The significance-aware binarization map Λ explicitly implements an error-control mechanism: when the modality integration score r > 
+
+0.5, full-precision weights activated by a single modality receive larger Λ values; otherwise, weights activated across multiple modalities are emphasized. 
+
+Theorem 1. Monotonicity of Quantization Error 
+
+Let eij := |Wij − cWij | denote the element-wise quantization error, which is continuous and independent. Consider the relaxed error-allocation problem associated with Eq. (3): 
+
+min {eij ≥0}
+
+P 
+
+> i,j
+
+Λij e2 
+
+> ij
+
+s.t. P 
+
+> i,j
+
+eij = E, where 
+
+E > 0 is a fixed total error budget. Let e∗ 
+
+> ij
+
+be the optimal quantization error. For any two elements 
+
+(i, j ) and (p, q ), the optimal error satisfies: 
+
+e∗ 
+
+> ij
+
+≤ Λpq 
+
+Λij 
+
+e∗ 
+
+> pq
+
+. (11) IEEE COMPUTER SOCIETY JOURNAL, VOL. XX, NO. X, 2026 5                                                                                                                                      
+
+> TABLE 1 Performance comparison of different quantization methods on Qwen2.5-VL-Instruct models of different scales. The best result is highlighted in red .
+> Model Method Weight bits Memory MMStar DocVQA TextVQA Video-MME VSI-Bench Qwen2.5-VL-7B-Instruct Full Precision 16 bit 15.45 GB 62.25 95.17 83.88 61.96 29.75 GPTQ [4] (ICLR 2023) 3 bit 2.66 GB 56.10 93.36 82.25 59.93 33.16 PB-LLM [16] (ICLR’2024) 1.17 bit 2.15 GB 4.6 9.40 28.67 9.89 4.94 BiLLM [17] (ICML’2024) 1.08 bit 2.24 GB 29.97 33.08 53.38 26.56 13.12 ARB-LLM [18] (ICLR’2025) 1.07 bit 2.14 GB 38.10 80.48 70.70 47.14 25.89
+> Ours (SAB-LVLM )1.07 bit 2.14 GB 45.79 85.34 74.00 48.11 26.01
+> Qwen2.5-VL-32B-Instruct Full Precision 16 bit 62.31 GB 69.50 94.80 78.85 70.50 36.99 GPTQ [4] (ICLR 2023) 3 bit 12.71 GB 58.63 92.65 74.45 61.67 33.90 PB-LLM [16] (ICLR’2024) 1.70 bit 10.24 GB 37.66 66.10 63.62 47.89 15.21 BiLLM [17] (ICML’2024) 1.08 bit 10.73 GB 46.29 60.85 55.92 47.04 17.65 ARB-LLM (ICLR’2025) 1.16 bit 10.28 GB 48.48 90.00 74.96 57.70 25.12
+> Ours (SAB-LVLM )1.07 bit 10.28 GB 54.77 90.36 75.45 59.15 29.05
+> Qwen2.5-VL-72B-Instruct Full Precision 16 bit 136.74 GB 67.19 96.40 83.26 73.30 37.00 GPTQ [4] (ICLR 2023) 3 bit 28.61 GB 66.57 –94.25 –82.03 65.11 34.71 PB-LLM [16] (ICLR’2024) 1.70 bit 22.99 GB 30.14 85.33 74.34 54.37 17.27 BiLLM [17] (ICML’2024) 1.08 bit 24.23 GB 51.62 90.10 77.28 58.41 25.76 ARB-LLM [18] (ICLR’2025) 1.19 bit 23.23 GB 57.45 90.42 80.23 61.15 33.40
+> Ours (SAB-LVLM )1.07 bit 23.23 GB 58.48 92.56 80.76 64.93 34.18
+
+Theorem 1 shows that for any two distinct elements 
+
+(i, j ) and (p, q ), Λij > Λpq implies e∗ 
+
+> ij
+
+< e ∗ 
+
+> pq
+
+. Moreover, the optimal error is inversely proportional to the squared significance weight, i.e., e∗ 
+
+> ij
+
+∝ Λ−1 
+
+> ij
+
+. From a theoretical perspective, this theorem demonstrates that full-precision weights corresponding to larger values in the significance-aware binarization map Λ incur smaller quantization errors. Theorem 1 thus provides theoretical support for our claim that the proposed significance-aware binarization map Λ
+
+guides the optimization process to preserve task-relevant weights according to their significance. 
+
+3.3 Alternating Significance-Weighted Update 
+
+Inspired by [4], [17], [18], we propose an alternating refine-ment procedure to optimize Eq. (3) based on a sensitivity-aware binarization map Λ. Given the sensitivity matrix 
+
+S, we set T = 2 for key weights to achieve enhanced representation capabilities; otherwise, T = 1 . Additionally, in Eq. (2), we set the binary basis B = sign( W) and use 
+
+∂L(W, cW)/∂α ϵr = 0 to update row-wise scaling vector 
+
+αϵr ∈ Rn at order ϵ:
+
+αϵr [i] = 
+
+Pmj=1 Λij Φϵij fWij 
+
+Pmj=1 Λij (Φϵij )2 , Φϵij = αϵc[j]Bϵij Mgij , (12) where fW = W − cW ∈ Rn×m is the residual matrix, 
+
+αϵr [i] is the scale value in the i-th row, and αϵc[j] denotes the scale value of the j-th column at order ϵ. Mg repre-sents the group mask generated by [4], and Mgij indicates the (i, j )-th element of Mg . Similar to αϵr , we update the column-wise scaling vector αϵc ∈ Rm at order ϵ by setting 
+
+∂L(W, cW)/∂α ϵc = 0 :
+
+αϵc[j] = 
+
+Pni=1 Λij Ψϵij fWij 
+
+Pni=1 Λij (Ψϵij )2 , Ψϵij = αϵr [i]Bϵij Mgij , (13) The optimization pipeline of our proposed SAB-LVLM is shown in Algorithm 1. 
+
+4 EXPERIMENTS 
+
+4.1 Setup 
+
+Implementation Details. All experiments were conducted on a single NVIDIA A100 GPU (80G) and evaluated using lmms-eval [50] for zero-shot testing. We set the block size to 128 and performed 15 iterations of alternating significance-weighted update. We sampled K examples from the COCO 2017 [49] dataset as calibration data. In this paper,we set 
+
+K = 128 . Additionally, as a PTQ method, SAB-LVLM did not apply any training or fine-tuning of the model. 
+
+Models. To comprehensively demonstrate the effective-ness of our approach, we evaluate the proposed SAB-LVLM across different LVLMs, including Qwen2.5-VL [33], [39], [51] and InternVL3.5 [40] families. Our evaluation spans a diverse range of model capacities, specifically targeting the 7B, 32B, and 72B variants of Qwen2.5-VL, alongside the 8B, 14B, and 38B variants of InternVL3.5. 
+
+Benchmarks. Furthermore, to rigorously assess the versatility of SAB-LVLM across various downstream tasks, we conduct extensive experiments on multiple benchmarks, including MMStar [52], DocVQA [41], TextVQA [53], Video-MME [54], and VSI-Bench [55]. MMStar [52] is a compre-hensive benchmark for LVLMs, comprising 1,500 meticu-lously curated samples designed to assess model capabilities across six core competencies. DocVQA [41] is a document-visual question-answering dataset comprising 50,000 ques-tions based on over 12,000 document images. It primarily evaluates ability to understand and reason about document content and layout structures. TextVQA [53] is a visual question-answering dataset that requires LVLMs to read and understand text within natural scene images, then answer questions by integrating visual context. Video-MME [54] is a comprehensive evaluation benchmark for assessing the video analysis and temporal understanding capabilities of LVLMs. VSI-Bench [55] is a video benchmark for evaluating IEEE COMPUTER SOCIETY JOURNAL, VOL. XX, NO. X, 2026 6
+
+TABLE 2 Performance comparison of different quantization methods on InternVL3.5-Instruct across five multimodal benchmarks. 
+
+Model Method Weight bits Memory MMStar DocVQA TextVQA Video-MME VSI-Bench InternVL3.5-8B-Instruct Full Precision 16 bit 15.89 GB 66.15 92.47 77.38 66.59 56.30 GPTQ [4] (ICLR 2023) 3 bit 2.83 GB 61.04 89.82 74.82 56.81 49.01 PB-LLM [16] (ICLR’2024) 1.70 bit 2.28 GB 10.36 0.03 0.00 24.67 0.26 BiLLM [17] (ICML’2024) 1.08 bit 2.39 GB 3.42 0.93 0.23 10.52 1.24 ARB-LLM [18] (ICLR’2025) 1.07 bit 2.28 GB 24.67 40.67 30.83 9.89 0.16 
+
+Ours (SAB-LVLM ) 1.07 bit 2.28 GB 27.02 48.03 42.04 24.00 9.63 
+
+InternVL3.5-14B-Instruct Full Precision 16 bit 28.16 GB 65.18 93.40 77.80 67.90 60.80 GPTQ [4] (ICLR 2023) 3 bit 5.38 GB 64.45 94.01 74.90 60.07 52.60 PB-LLM [16] (ICLR’2024) 1.70 bit 4.34 GB 12.53 0.00 0.00 22.52 0.09 BiLLM [17] (ICML’2024) 1.07 bit 4.53 GB 31.38 47.09 31.65 15.63 17.36 ARB-LLM [18] (ICLR’2025) 1.07 bit 4.33 GB 47.50 85.15 70.77 51.33 31.50 
+
+Ours (SAB-LVLM ) 1.07 bit 4.33 GB 50.46 84.34 71.03 51.96 32.50 
+
+InternVL3.5-38B-Instruct Full Precision 16 bit 71.51 GB 75.30 94.00 82.70 70.90 66.30 GPTQ [4] (ICLR 2023) 3 bit 12.71 GB 68.04 90.25 80.22 62.30 56.12 PB-LLM [16] (ICLR’2024) 1.70 bit 10.24 GB 37.07 54.02 65.06 46.85 26.83 BiLLM [17] (ICML’2024) 1.07 bit 10.72 GB 21.30 42.90 37.09 16.93 26.71 ARB-LLM [18] (ICLR’2025) 1.08 bit 10.27 GB 54.54 86.85 77.37 59.29 41.62 
+
+Ours (SAB-LVLM ) 1.06 bit 10.27 GB 56.22 87.19 78.06 59.41 43.00 
+
+TABLE 3 Detailed Results on Qwen2.5-VL-Instruct at MMStar. Coa. Prcep.: Coarse Perception; Fin. Prcep.: Fine-grained Perception; Ins. Reas.: Instance Reasoning; Logic. Reas.: Logical Reasoning; Math.: Mathematics; Sci. & Tech.: Science & Technology. 
+
+Model Method Weight bits Memory Coa. Prcep. Fin. Prcep. Ins. Reas. Logic. Reas. Math. Sci. & Tech. Qwen2.5-7B-Instruct Full Precision 16 bit 15.45 GB 90.74 61.13 72.30 61.64 59.26 38.33 GPTQ [4] (ICLR 2023) 3 bit 2.66 GB 70.93 53.77 65.34 55.85 52.87 37.83 PB-LLM [16] (ICLR’2024) 1.17 bit 2.15 GB 2.81 0.64 2.77 5.92 9.92 5.53 BiLLM [17] (ICML’2024) 1.08 bit 2.24 GB 46.56 26.10 35.46 25.00 22.08 24.65 ARB-LLM [18] (ICLR’2025) 1.07 bit 2.14 GB 62.97 31.52 45.93 41.91 26.74 19.54 
+
+Ours (SAB-LVLM ) 1.07 bit 2.14 GB 71.49 39.12 53.35 42.71 38.17 29.88 
+
+Qwen2.5-32B-Instruct Full Precision 16 bit 62.31 GB 75.11 57.06 72.91 69.32 75.17 51.57 GPTQ [4] (ICLR 2023) 3 bit 12.71 GB 71.85 54.53 70.71 57.61 58.36 38.72 PB-LLM [16] (ICLR’2024) 1.70 bit 10.24 GB 59.11 34.76 51.22 32.93 27.78 20.15 BiLLM [17] (ICML’2024) 1.08 bit 10.73 GB 69.77 43.68 56.85 43.15 37.53 26.76 ARB-LLM [18] (ICLR’2025) 1.16 bit 10.28 GB 69.78 47.81 61.46 44.86 33.77 33.21 
+
+Ours (SAB-LVLM ) 1.07 bit 10.28 GB 71.17 43.89 67.40 57.31 52.11 36.73 
+
+Qwen2.5-72B-Instruct Full Precision 16 bit 136.74 GB 75.86 60.30 72.08 73.94 71.74 48.16 GPTQ [4] (ICLR’2023) 3 bit 28.61 GB 76.08 60.56 70.70 74.50 69.33 48.26 PB-LLM [16] (ICLR’2024) 1.70 bit 22.99 GB 60.22 37.69 46.69 21.25 7.80 7.21 BiLLM [17] (ICML’2024) 1.08 bit 24.23 GB 67.94 49.51 62.74 49.18 51.53 28.81 ARB-LLM [18] (ICLR’2025) 1.19 bit 23.23 GB 73.03 53.70 66.09 55.44 60.99 35.46 
+
+Ours (SAB-LVLM ) 1.07 bit 23.23 GB 72.57 56.37 65.57 60.81 62.06 33.51 
+
+the visual-spatial intelligence of LVLMs. It constructs over 5,000 question-answer pairs, focusing on assessing spatial relationship comprehension, metric estimation, and spatio-temporal reasoning. 
+
+Baselines. We compare with various low-bit meth-ods [4], [16]–[18] across multiple datasets and across mul-tiple LVLMs. GPTQ [4] maintains performance at lower bit widths through layer-by-layer weighting based on second-order information. Note that GPTQ [4] is evaluated at 3-bit quantization, and we report its results only for performance reference rather than as a 1-bit baseline. BiLLM [17] is a 1-bit PTQ method that reduces compression error by identifying significant weights and combining them with binary resid-ual approximation. PB-LLM [16] is a partial binarization method that preserves a small number of significant weights as high-bit representations while binarizing the remaining weights, thereby maintaining the reasoning capabilities with extremely low bit. ARB-LLM [18] reduces distribution bias between full-precision weights and binary weights by alter-nately optimizing the binarization parameters. 
+
+4.2 Comparison Results 
+
+To comprehensively evaluate the performance of the pro-posed SAB-LVLM across various downstream tasks, as IEEE COMPUTER SOCIETY JOURNAL, VOL. XX, NO. X, 2026 7
+
+TABLE 4 Detailed Results on InternVL3.5 Instruct at MMStar. Coa. Prcep.: Coarse Perception; Fin. Prcep.: Fine-grained Perception; Ins. Reas.: Instance Reasoning; Logic. Reas.: Logical Reasoning; Math.: Mathematics; Sci. & Tech.: Science & Technology. 
+
+Model Method Weight bits Memory Coa. Prcep. Fin. Prcep. Ins. Reas. Logic. Reas. Math. Sci. & Tech. InternVL3.5-8B-Instruct Full Precision 16 bit 15.89 GB 77.44 57.90 75.13 67.11 70.55 48.75 GPTQ [4] (ICLR’2023) 3 bit 2.83 GB 76.02 53.86 68.24 64.71 65.63 37.77 PB-LLM [16] (ICLR’2024) 1.70 bit 2.28 GB 8.04 10.62 9.13 11.13 14.09 9.16 BiLLM [17] (ICML’2024) 1.08 bit 2.39 GB 2.17 5.64 1.96 4.52 3.13 3.09 ARB-LLM [18] (ICLR’2025) 1.07 bit 2.28 GB 39.00 28.11 32.11 24.07 12.33 12.40 
+
+Ours (SAB-LVLM ) 1.07 bit 2.28 GB 53.33 32.68 31.83 23.13 6.25 14.91 
+
+InternVL3.5-14B-Instruct Full Precision 16 bit 28.16 GB 74.41 58.87 78.54 72.96 80.29 56.32 GPTQ [4] (ICLR’2023) 3 bit 5.38 GB 76.19 59.65 69.91 64.72 67.57 48.67 PB-LLM [16] (ICLR’2024) 1.70 bit 4.34 GB 12.30 7.66 11.39 15.67 12.76 15.39 BiLLM [17] (ICML’2024) 1.07 bit 4.53 GB 60.34 39.17 32.63 21.97 11.15 23.05 ARB-LLM [18] (ICLR’2025) 1.07 bit 4.33 GB 64.47 46.55 54.74 40.98 48.03 30.23 
+
+Ours (SAB-LVLM ) 1.07 bit 4.33 GB 67.33 50.46 57.51 43.76 52.82 30.88 
+
+InternVL3.5-38B-Instruct Full Precision 16 bit 71.51 GB 78.23 57.53 80.64 80.33 85.25 69.81 GPTQ [4] (ICLR’2023) 3 bit 12.71 GB 74.40 64.54 72.53 70.81 74.04 51.96 PB-LLM [16] (ICLR’2024) 1.70 bit 10.24 GB 67.71 36.38 48.90 25.61 20.17 23.64 BiLLM [17] (ICML’2024) 1.07 bit 10.72 GB 31.86 14.03 24.62 22.66 17.25 17.36 ARB-LLM [18] (ICLR’2025) 1.08 bit 10.27 GB 72.24 56.57 64.89 49.18 50.67 33.68 
+
+Ours (SAB-LVLM ) 1.06 bit 10.27 GB 75.02 58.38 63.54 47.22 53.01 40.17 
+
+TABLE 5 Detailed results on Qwen2.5-VL-32B-Instruct at VSI-Bench. OAO: object appearance order; OAD: object absolute distance; OC: object counting; ORD: object relative distance; OSE: object size estimation; RSE: room size estimation; RP: route planning; ODir: object relative direction. 
+
+Method Weight bits Memory OAO OAD OC ORD OSE RSE RP ODir Avg. Full Precision 16 bit 62.31 GB 25.24 26.40 34.81 44.79 51.77 43.54 31.44 37.88 36.99 GPTQ [4] (ICLR’2023) 3 bit 12.71 GB 25.89 29.92 28.83 38.03 43.80 29.55 32.47 42.74 33.90 PB-LLM [16] (ICLR’2024) 1.70 bit 10.24 GB 19.74 0 0 32.96 0 0 29.90 39.12 15.21 BiLLM [17] (ICML’2024) 1.08 bit 10.73 GB 21.04 12.07 6.85 27.04 4.89 1.74 29.38 38.18 17.65 ARB-LLM [18] (ICLR’2025) 1.07 bit 10.28 GB 25.89 24.14 37.47 40.85 3.42 8.33 28.35 32.53 25.12 
+
+Ours (SAB-LVLM ) 1.07 bit 10.28 GB 25.89 28.99 27.04 40.28 21.09 21.49 33.51 34.17 29.05 
+
+TABLE 6 Ablation study of the threshold τ on Qwen2.5-VL-32B-Instruct. Coa. Prcep.: Coarse Perception; Fin. Prcep.: Fine-grained Perception; Ins. Reas.: Instance Reasoning; Logic. Reas.: Logical Reasoning; Math.: Mathematics; Sci. & Tech.: Science & Technology.                                    
+
+> τCoa. Prcep. Fin. Prcep. Ins. Reas. Logic. Reas. Math. Sci. & Tech. Avg. Baseline 69.78 47.81 61.46 44.86 33.77 33.21 48.48 0.0001 69.37 43.45 61.63 47.25 36.20 27.87 47.63 0.0005 66.51 42.90 61.48 49.35 45.47 30.00 49.28 0.0003 71.17 43.89 67.40 57.31 52.11 36.73 54.77
+
+TABLE 7 Comparison of different variants of MGSI on Qwen2.5-VL-32B at MMStar. Coa. Prcep.: Coarse Perception; Fin. Prcep.: Fine-grained Perception; Ins. Reas.: Instance Reasoning; Logic. Reas.: Logical Reasoning; Math.: Mathematics; Sci. & Tech.: Science & Technology.                                                                       
+
+> Variant Coa. Prcep. Fin. Prcep. Ins. Reas. Logic. Reas. Math. Sci. & Tech. Avg.
+> r= 0 .165.18 42.40 61.18 53.72 47.97 30.92 50.23
+> r= 0 .267.16 42.70 63.85 51.66 49.23 32.30 51.15
+> r= 0 .366.76 44.05 63.13 50.53 34.44 34.39 48.88
+> r= 0 .565.61 43.44 63.68 48.91 37.66 27.10 47.73
+> r= 1 69.78 47.81 61.46 44.86 33.77 33.21 48.48 only St66.69 43.44 63.82 52.60 50.22 36.87 52.27 only Sv66.26 42.68 63.07 51.55 48.24 37.49 51.54 MGSI 71.17 43.89 67.40 57.31 52.11 36.73 54.77
+
+shown in Tabs. 1-5, we conducted a thorough assessment of the proposed SAB-LVLM against baseline methods across five multimodal benchmarks and multiple LVLMs. 
+
+TABLE 8 Comparison of different variants of SAB-LVLM on Qwen2.5-VL-32B-Instrust at MMStar benchmark. Coa. Prcep.: Coarse Perception; Fin. Prcep.: Fine-grained Perception; Ins. Reas.: Instance Reasoning; Logic. Reas.: Logical Reasoning; Math.: Mathematics; Sci. & Tech.: Science & Technology.                                    
+
+> Variant Coa. Prcep. Fin. Prcep. Ins. Reas. Logic. Reas. Math. Sci. & Tech. Avg. w/o SAB 69.78 47.81 61.46 44.86 33.77 33.21 48.48 w/ SAB-R 65.79 42.52 59.27 51.05 46.16 30.29 49.18 w/ SAB-C 66.97 45.83 63.80 54.39 48.88 34.47 52.39
+> w/ SAB 71.17 43.89 67.40 57.31 52.11 36.73 54.77
+
+In Tab. 1, SAB-LVLM consistently outperforms all 1-bit baselines across all five benchmarks while maintaining an approximate 1-bit quantization depth. Notably, PB-LLM [16] and BiLLM [17] suffer severe performance degradation after binarization, indicating that naive partial binarization or reliance solely on residuals is insufficient for LVLM. In contrast, the proposed SAB-LVLM achieves stable gains across perception, document understanding, and video un-derstanding tasks. In Tab. 2, we present results across the InternVL3.5 family. The proposed SAB-LVLM significantly outperforms existing 1-bit baselines in most benchmarks, indicating our approach is independent of specific back-bone networks. In Tabs. 3 and 4, we report the detailed results on the MMStar benchmark across Qwen2.5-VL and InternVL3.5 families to further examine which capabilities IEEE COMPUTER SOCIETY JOURNAL, VOL. XX, NO. X, 2026 8Question: What color is the awning        
+
+> in front of the store in the image?
+> A: White
+> B: Black
+> C: Brown
+> D: Gray
+> Question: How many people
+> are present in the image?
+> A: One
+> B: Two
+> C: Three
+> D: Four
+> Question: What's the function
+> of the demonstrated object?
+> A: grill
+> B: filtration
+> C: flavouring
+> D: Pick-up
+> Answer: SAB-LVLM: B ARB-LLM: C Answer: SAB-LVLM ：CARB-LLM: B Answer: SAB-LVLM ：DARB-LLM: B
+> Fig. 3. Qualitative analysis at MMStar with Qwen2.5-VL-7B-Instruct.
+
+are preserved. Compared to the 1-bit baselines, the proposed SAB-LVLM better preserves coarse perception and reason-ing capabilities. In Tab 5, we present the detailed results of VSI-Bench on Qwen2.5-VL-32B-Instruct. SAB-LVLM outper-forms baseline methods across multiple tasks and achieves comparable performance to full-precision models in object appearance order, object absolute distance, and route plan-ning tasks. In Fig. 3, We present qualitative analysis on MMStar using QwenVL-32B-VL. The three questions in the figure respectively tested the perception, counting, and rea-soning capabilities of LVLM. Compared to ARB-LLM [15], SAB-LVLM successfully answered all three questions. 
+
+4.3 Ablation Study 
+
+In this section, we analyze the proposed components, in-cluding the spatial significance map, modality-guided sig-nificance integration (MGSI), and different variants of SAB-LVLM. All experiments were conducted on the MMStar benchmark using Qwen2.5-VL-32B, and detailed perfor-mance metrics are reported. 
+
+4.3.1 Analysis of Spatial Significance Map. 
+
+As shown in Tab. 6, we evaluate the performance of SAB-LVLM on Qwen2.5-VL-32B using three different values of the threshold τ on the MMStar benchmark. The results show that the spatial significance map is sensitive to the choice of τ . Among all settings, τ = 0 .0003 achieves the best overall performance, reaching 54.77 and improving the baseline by 6.29 points. In particular, this setting yields more evident gains on instance reasoning, logical reasoning, mathematics, and science & technology, indicating that an appropriate threshold helps preserve multimodal reasoning ability under extreme low-bit compression. When τ is too small or too large, the distinction between weights activated under a single modal and those activated activated across modalities becomes less effective, which limits the benefit of significance-aware binarization map. These results indicate that partitioning spatial significance map using an appro-priate threshold τ is crucial for preserving the capabilities of LVLMs. 
+
+4.3.2 Analysis of Modality-Guided Significance Integration. 
+
+As shown in Tab. 7, we evaluate the performance of MM-Star on Qwen2.5-VL-32B-Instrust with different variants of modality-guided significance integration. Using a fixed modality integration score r yields limited improvements. The best fixed setting ( r = 0 .2) reaches 51.15, still below the MGSI (54.77). As shown in Fig. 4, we present the distri-bution of r among different layers, including self-attention 0 4 8 12 16 20 24 27          
+
+> Layers
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> Value of  r04812 16 20 24 27
+> Layers
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> Value of  r
+> Fig. 4. Visualization of modality integration score ramong self-attention output projection layers ( the top left ), the down projection layers ( the top right ).
+
+output projection, down projection layers. Since rℓ varies significantly across different layers, simply fixing r yields limited effectiveness. Therefore, adaptively estimating r for each layer is more effective than using a global constant. Moreover, using only a single-modality sensitivity map (only St or only Sv ) still underperforms the joint MGSI (52.27/51.54 vs. 54.77), confirming that LVLM binarization requires jointly modeling both modalities rather than treat-ing them independently. 
+
+4.3.3 Analysis of different variants of SAB-LVLM. 
+
+As shown in Tab. 8, we report MMStar results on Qwen2.5-VL-32B-Instruct under different variants of SAB-LVLM. “w/o SAB” denotes the baseline, which adopts the same alternating refinement strategy as [18]. “w/ SAB-R” ap-plies row-wise significance reweighting in the alternating significance-weighted update, where all weights within the same row share an identical significance value, i.e., sig-nificance value of i-th row Λij = 1
+
+> n
+
+Pnj=1 r · Γij + (1 −
+
+r) · (1 − Γij ). “w/ SAB-C” applies column-wise significance reweighting, where all weights within the same column share an identical significance value, i.e., significance value of j-th column Λij = 1
+
+> m
+
+Pmi=1 r · Γij + (1 − r) · (1 − Γij ).Finally, “w/ SAB” uses the proposed significance map de-fined in Eq. (10). As shown in Tab. 8, the complete spatial significance map (w/ SAB) achieved the highest average score. 
+
+5 CONCLUSION 
+
+In this paper, we introduce SAB-LVLM , a novel significance-aware binarization framework for large vision-language models, which serves as an early exploration of weight binarization for LVLMs. Specifically, we first con-struct a spatial significance map using multimodal calibra-tion data to distinguish full-precision weights activated un-der a single modality from those activated across modalities. We then devise a modality-guided significance integration strategy to measure weight significance across layers and IEEE COMPUTER SOCIETY JOURNAL, VOL. XX, NO. X, 2026 9
+
+modalities, and further build a significance-aware binariza-tion map. Based on this design, we employ an alternating significance-weighted update scheme to perform LVLM bi-narization under approximate 1-bit constraints. Extensive experiments on representative LVLM benchmarks demon-strate that SAB-LVLM consistently outperforms existing binarization methods across multiple downstream tasks. In the future work, we will evaluate the proposed SAB-LVLM on a broader set of LVLM architectures, more diverse multimodal tasks, or longer-context video understanding scenarios. 
+
+REFERENCES 
+
+[1] D.-A. team, “Deepseek-v3 technical report,” arXiv preprint arxiv:2412.19437 , 2025. [2] S. Zhang, S. Roller, N. Goyal, M. Artetxe, M. Chen, S. Chen, C. Dewan, M. T. Diab, X. Li, X. V. Lin, T. Mihaylov, M. Ott, S. Shleifer, K. Shuster, D. Simig, P. S. Koura, A. Sridhar, T. Wang, and L. Zettlemoyer, “Opt: Open pre-trained transformer language models,” arXiv preprint arxiv:2205.01068 , 2022. [3] H. Touvron, T. Lavril, G. Izacard, X. Martinet, M.-A. Lachaux, T. Lacroix, B. Rozi` ere, N. Goyal, E. Hambro, F. Azhar, A. Rodriguez, A. Joulin, E. Grave, and G. Lample, “Llama: Open and efficient foundation language models,” arXiv preprint arxiv:2302.13971 , 2023. [4] E. Frantar, S. Ashkboos, T. Hoefler, and D. Alistarh, “GPTQ: Ac-curate post-training compression for generative pretrained trans-formers,” arXiv preprint arXiv:2210.17323 , 2022. [5] P. Dong, L. Li, D. Du, Y. Chen, Z. Tang, Q. Wang, W. Xue, W. Luo, Q. fei Liu, Y.-T. Guo, and X. Chu, “Stbllm: Breaking the 1-bit barrier with structured binary llms,” ArXiv , vol. abs/2408.01803, 2024. [6] S. Li, Y. Hu, X. Ning, X. Liu, K. Hong, X. Jia, X. Li, Y. Yan, P. Ran, G. Dai, S. Yan, H. Yang, and Y. Wang, “Mbq: Modality-balanced quantization for large vision-language models,” arXiv preprint arxiv:2412.19509 , 2025. [7] G. Xiao, J. Lin, M. Seznec, H. Wu, J. Demouth, and S. Han, “Smoothquant: accurate and efficient post-training quantization for large language models,” in ICML , ser. ICML’23. JMLR.org, 2023. [8] S. Kim, C. Hooper, A. Gholami, Z. Dong, X. Li, S. Shen, M. W. Mahoney, and K. Keutzer, “Squeezellm: Dense-and-sparse quanti-zation,” ArXiv , vol. abs/2306.07629, 2023. [9] M. Sun, Z. Liu, A. Bair, and J. Z. Kolter, “A simple and effective pruning approach for large language models,” in ICLR , 2024. [10] S. Gao, C.-H. Lin, T. Hua, Z. Tang, Y. Shen, H. Jin, and Y.-C. Hsu, “DISP-LLM: Dimension-independent structural pruning for large language models,” in NeurIPS , 2024. [11] J. Liu, C. Zhang, J. Guo, Y. Zhang, H. Que, K. Deng, ZhiqiBai, J. Liu, G. Zhang, JiakaiWang, Y. Wu, C. Liu, J. Wang, L. Qu, W. Su, and B. Zheng, “DDK: Distilling domain knowledge for efficient large language models,” in NeurIPS , 2024. [12] Y. Gu, L. Dong, F. Wei, and M. Huang, “MiniLLM: Knowledge distillation of large language models,” in ICLR , 2024. [13] R. Saha, N. Sagan, V. Srivastava, A. Goldsmith, and M. Pilanci, “Compressing large language models using low rank and low precision decomposition,” in NeurIPS , 2024. [14] M. Zhang, H. Chen, C. Shen, Z. Yang, L. Ou, X. Yu, and B. Zhuang, “LoRAPrune: Pruning meets low-rank parameter-efficient fine-tuning,” 2024. [15] N. CHEN, W. Ye, and Y. Jiang, “HBLLM: Wavelet-enhanced high-fidelity 1-bit quantization for LLMs,” in NeurIPS , 2025. [16] Z. Yuan, Y. Shang, and Z. Dong, “PB-LLM: Partially binarized large language models,” in ICLR , 2024. [17] W. Huang, Y. Liu, H. Qin, Y. Li, S. Zhang, X. Liu, M. Magno, and X. QI, “BiLLM: Pushing the limit of post-training quantization for LLMs,” in ICML , 2024. [18] Z. Li, X. Yan, T. Zhang, H. Qin, D. Xie, J. Tian, zhongchao shi, L. Kong, Y. Zhang, and X. Yang, “ARB-LLM: Alternating refined binarizations for large language models,” in ICLR , 2025. [19] R. Bai, B. Liu, and qiang liu, “SKIM: Any-bit quantization pushing the limits of post-training quantization,” in ICML , 2025. [20] S. Wang, C. Li, Y. Kang, J. Fan, Z. Ou, and A. Yao, “Sliderquant: Accurate post-training quantization for LLMs,” in ICLR , 2026. [21] Y. Li, R. Gong, X. Tan, Y. Yang, P. Hu, Q. Zhang, F. Yu, W. Wang, and S. Gu, “ {BRECQ }: Pushing the limit of post-training quanti-zation by block reconstruction,” in ICLR , 2021. [22] Y. Xu, L. Xie, X. Gu, X. Chen, H. Chang, H. Zhang, Z. Chen, X. ZHANG, and Q. Tian, “QA-loRA: Quantization-aware low-rank adaptation of large language models,” in ICLR , 2024. [23] T. Hao, X. Ding, J. Feng, Y. Yang, H. Chen, and G. Ding, “Quan-tized prompt for efficient generalization of vision-language mod-els,” in ECCV , 2024. [24] M. Fu, H. Yu, J. Shao, J. Zhou, K. Zhu, and J. Wu, “Quantization without tears,” in CVPR , 2025. [25] Z. Yuan, L. Niu, J.-W. Liu, W. Liu, X. Wang, Y. Shang, G. Sun, Q. Wu, J. Wu, and B. Wu, “Rptq: Reorder-based post-training quantization for large language models,” arXiv preprint arxiv:2304.01089 , 2023. [26] X. Wei, Y. Zhang, Y. Li, X. Zhang, R. Gong, J. Guo, and X. Liu, “Out-lier suppression+: Accurate quantization of large language models by equivalent and effective shifting and scaling,” in EMNLP , 2023. [27] Z. Yao, R. Y. Aminabadi, M. Zhang, X. Wu, C. Li, and Y. He, “Zeroquant: Efficient and affordable post-training quantization for large-scale transformers,” in NeurIPS , A. H. Oh, A. Agarwal, D. Belgrave, and K. Cho, Eds., 2022. [28] J. Lin, J. Tang, H. Tang, S. Yang, G. Xiao, and S. Han, “Awq: Activation-aware weight quantization for on-device llm compres-sion and acceleration,” vol. 28, no. 4, pp. 12–17, Jan. 2025. [29] C. Lee, J. Jin, T. Kim, H. Kim, and E. Park, “Owq: outlier-aware weight quantization for efficient fine-tuning and inference of large language models,” ser. AAAI’24/IAAI’24/EAAI’24. AAAI Press, 2024. [30] T. Dettmers, R. Svirschevski, V. Egiazarian, D. Kuznedelev, E. Frantar, S. Ashkboos, A. Borzunov, T. Hoefler, and D. Alistarh, “Spqr: A sparse-quantized representation for near-lossless llm weight compression,” in ICLR , B. Kim, Y. Yue, S. Chaudhuri, K. Fragkiadaki, M. Khan, and Y. Sun, Eds., vol. 2024, 2024, pp. 5733–5761. [31] A. Radford, J. Wu, R. Child, D. Luan, D. Amodei, and I. Sutskever, “Language models are unsupervised multitask learners,” 2019. [32] Q. Team, “Qwen3 technical report,” arXiv preprint arxiv:2505.09388 , 2025. [33] J. Bai, S. Bai, S. Yang, S. Wang, S. Tan, P. Wang, J. Lin, C. Zhou, and J. Zhou, “Qwen-vl: A versatile vision-language model for un-derstanding, localization, text reading, and beyond,” arXiv preprint arXiv:2308.12966 , 2023. [34] J. Dong, Q. Lyu, B. Liu, X. Wang, W. Liang, D. Zhang, J. Tu, H. Li, H. Zhao, H. Ding, Y. Zhang, Z. Han, N. Sebe, F. S. Khan, S. Khan, M. Shah, P. Torr, M.-H. Yang, and D. Tao, “Learning to model the world: A survey of world models in artificial intelligence,” 
+
+TechRxiv , 2026. [35] X. Wang, J. Dong, B. Liu, Q. Lyu, L. Liu, and Z. Han, “Lifelong embodied navigation learning,” arXiv preprint arXiv:2603.06073 ,2026. [36] J. Li, D. Li, S. Savarese, and S. Hoi, “Blip-2: bootstrapping language-image pre-training with frozen image encoders and large language models,” in ICML , ser. ICML’23. JMLR.org, 2023. [37] W. Dai, J. Li, D. Li, A. Tiong, J. Zhao, W. Wang, B. Li, P. Fung, and S. Hoi, “InstructBLIP: Towards general-purpose vision-language models with instruction tuning,” in NeurIPS , 2023. [38] H. Liu, C. Li, Q. Wu, and Y. J. Lee, “Visual instruction tuning,” 
+
+arXiv preprint arxiv:2304.08485 , 2023. [39] Q. Team, “Qwen2.5-vl,” January 2025, technical blog post. [40] W. Wang, Z. Gao, L. Gu, H. Pu, L. Cui, X. Wei, Z. Liu, L. Jing, S. Ye, J. Shao et al. , “Internvl3.5: Advancing open-source multimodal models in versatility, reasoning, and efficiency,” arXiv preprint arXiv:2508.18265 , 2025. [41] M. Mathew, D. Karatzas, and C. V. Jawahar, “Docvqa: A dataset for vqa on document images,” in WACV , 2021, pp. 2199–2208. [42] A. Das, S. Kottur, K. Gupta, A. Singh, D. Yadav, J. M. F. Moura, D. Parikh, and D. Batra, “Visual dialog,” arXiv preprint arxiv:1611.08669 , 2017. [43] L. Yu, P. Poirson, S. Yang, A. C. Berg, and T. L. Berg, “Modeling context in referring expressions,” arXiv preprint arxiv:1608.00272 ,2016. [44] T. Kim, C. Min, B. Kim, J. Kim, W. Jeung, and J. Choi, “Realfred: An embodied instruction following benchmark in photo-realistic environments,” in ECCV . Springer, 2024, pp. 346–364. [45] A. Bulat, Y. Ouali, and G. Tzimiropoulos, “QBB: Quantization with binary bases for LLMs,” in NeurIPS , 2024. IEEE COMPUTER SOCIETY JOURNAL, VOL. XX, NO. X, 2026 10 
+
+[46] Z. Liu, B. Oguz, C. Zhao, E. Chang, P. Stock, Y. Mehdad, Y. Shi, R. Krishnamoorthi, and V. Chandra, “Llm-qat: Data-free quantiza-tion aware training for large language models,” in ACLFindings ,2024, pp. 467–484. [47] Z. Dong, Z. Yao, A. Gholami, M. W. Mahoney, and K. Keutzer, “Hawq: Hessian aware quantization of neural networks with mixed-precision,” in ICCV , 2019, pp. 293–302. [48] T. Dettmers, M. Lewis, Y. Belkada, and L. Zettlemoyer, “Gpt3. int8 (): 8-bit matrix multiplication for transformers at scale,” NeurIPS ,vol. 35, pp. 30 318–30 332, 2022. [49] T.-Y. Lin, M. Maire, S. Belongie, J. Hays, P. Perona, D. Ramanan, P. Doll’ar, and C. L. Zitnick, “Microsoft coco: Common objects in context,” in ECCV . Springer, 2014, pp. 740–755. [50] K. Zhang, B. Li, P. Zhang, F. Pu, J. A. Cahyono, K. Hu, S. Liu, Y. Zhang, J. Yang, C. Li, and Z. Liu, “Lmms-eval: Reality check on the evaluation of large multimodal models,” 2024. [51] P. Wang, S. Bai, S. Tan, S. Wang, Z. Fan, J. Bai, K. Chen, X. Liu, J. Wang, W. Ge, Y. Fan, K. Dang, M. Du, X. Ren, R. Men, D. Liu, C. Zhou, J. Zhou, and J. Lin, “Qwen2-vl: Enhancing vision-language model’s perception of the world at any resolution,” arXiv preprint arXiv:2409.12191 , 2024. [52] L. Chen, J. Li, X. Dong, P. Zhang, Y. Zang, Z. Chen, H. Duan, J. Wang, Y. Qiao, D. Lin, and F. Zhao, “Are we on the right way for evaluating large vision-language models?” in NeurIPS , 2024. [53] A. Singh, V. Natarajan, M. Shah, Y. Jiang, X. Chen, D. Batra, D. Parikh, and M. Rohrbach, “Towards vqa models that can read,” in CVPR , 2019, pp. 8309–8318. [54] C. Fu, Y. Dai, Y. Luo, L. Li, S. Ren, R. Zhang, Z. Wang, C. Zhou, Y. Shen, M. Zhang, P. Chen, Y. Li, S. Lin, S. Zhao, K. Li, T. Xu, X. Zheng, E. Chen, C. Shan, R. He, and X. Sun, “Video-mme: The first-ever comprehensive evaluation benchmark of multi-modal llms in video analysis,” in CVPR , June 2025, pp. 24 108–24 118. [55] J. Yang, S. Yang, A. W. Gupta, R. Han, L. Fei-Fei, and S. Xie, “Thinking in space: How multimodal large language models see, remember, and recall spaces,” in CVPR , 2025, pp. 10 632–10 643.

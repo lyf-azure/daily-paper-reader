@@ -1,6 +1,815 @@
 {
-  "generated_at": "2026-03-06T19:11:18.471356+00:00",
-  "updated_date": "20260306",
+  "generated_at": "2026-07-09T13:54:59.352985+00:00",
+  "updated_date": "20260630-20260709",
   "carryover_days": 9,
-  "items": []
+  "tag_states": {
+    "vlam": {
+      "updated_date": "20260630-20260709",
+      "carryover_days": 9,
+      "items": [
+        {
+          "id": "2607.01658v1",
+          "source": "arxiv",
+          "title": "Teaching Vision-Language-Action Models What to See and Where to Look",
+          "abstract": "Vision-Language-Action (VLA) models have emerged as a promising paradigm for end-to-end autonomous driving. However, existing VLAs' training relies heavily on text-centric visual question answering and chain-of-thought reasoning data, which emphasizes linguistic reasoning rather than action-grounded planning. As a result, the learned representations capture semantic knowledge but lack spatial dependencies crucial for reliable trajectory prediction. We propose DriveTeach-VLA, a framework that explicitly teaches VLAs what to see and where to look. Driving-aware Vision Distillation (DVD) injects driving-specific perceptual priors into the vision encoder, while 2D Trajectory-Guided Prompts (2D-TGP) provide spatial conditioning aligned with feasible driving trajectories. Together, they form a vision-guided learning pipeline: what to see (DVD pretraining) - where to look (TGP-guided SFT) - how to act (TGP-guided GRPO). DriveTeach-VLA achieves the state-of-the-art performance on NAVSIM and nuScenes. Our code is available at: https://github.com/ShivaTeam/DriveTeach-VLA.",
+          "authors": [
+            "Yuguang Yang",
+            "Canyu Chen",
+            "Zhewen Tan",
+            "Yizhi Wang",
+            "Zichao Feng",
+            "Chunyang Liu",
+            "Kehua Sheng",
+            "Juan Zhang",
+            "Linlin Yang",
+            "Baochang Zhang",
+            "Yan Wang",
+            "Bo Zhang",
+            "Xianbin Cao"
+          ],
+          "primary_category": "cs.CV",
+          "categories": [
+            "cs.CV"
+          ],
+          "published": "2026-07-02T03:34:32+00:00",
+          "link": "https://arxiv.org/pdf/2607.01658v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "proposes DriveTeach-VLA with driving-aware vision distillation and trajectory-guided prompts for cross-modal fusion",
+          "llm_evidence_cn": "提出DriveTeach-VLA，通过驾驶感知视觉蒸馏和轨迹引导提示增强跨模态融合",
+          "llm_evidence": "提出DriveTeach-VLA，通过驾驶感知视觉蒸馏和轨迹引导提示增强跨模态融合",
+          "canonical_evidence": "提出DriveTeach-VLA，通过驾驶感知视觉蒸馏和轨迹引导提示增强跨模态融合",
+          "llm_tldr_en": "Proposes to inject driving-specific perceptual priors into VLA vision encoder via distillation and spatial conditioning via 2D trajectory-guided prompts for better action-grounded planning in autonomous driving.",
+          "llm_tldr_cn": "现有VLA模型在自动驾驶中依赖文本中心数据，缺乏空间依赖建模。本文提出DriveTeach-VLA框架，通过驾驶感知视觉蒸馏（DVD）注入驾驶先验，并采用2D轨迹引导提示（2D-TGP）提供空间条件。实验表明该方法有效提升了轨迹预测的准确性和安全性，推动了VLA在自动驾驶中的端到端应用。",
+          "llm_tldr": "现有VLA模型在自动驾驶中依赖文本中心数据，缺乏空间依赖建模。本文提出DriveTeach-VLA框架，通过驾驶感知视觉蒸馏（DVD）注入驾驶先验，并采用2D轨迹引导提示（2D-TGP）提供空间条件。实验表明该方法有效提升了轨迹预测的准确性和安全性，推动了VLA在自动驾驶中的端到端应用。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "state of the art Vision Language Action model backbone and cross modal fusion architecture",
+          "matched_requirement_id": "req-8",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.01658v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.07608v1",
+          "source": "arxiv",
+          "title": "Dual Latent Memory in Vision-Language-Action Models for Robotic Manipulation",
+          "abstract": "Mainstream Vision-Language-Action (VLA) models predict actions primarily from the current observation under a Markovian assumption, thus struggling with long-horizon, temporally dependent tasks. Existing memory-augmented VLAs either expand the observation window or retrieve history from the memory bank as auxiliary policy-side context. However, they leave memory outside the native latent embedding space of VLA reasoning, preventing historical experience from being fluidly interleaved with multimodal reasoning and action formation. To this end, we introduce LaMem-VLA, a latent-memory-native framework that reconstructs historical experience into latent memory tokens and directly interweaves them with VLA reasoning. At its core, LaMem-VLA introduces four coordinated components: (i) a curator that organizes historical experience into two complementary short-term and long-term memory vaults; (ii) a seeker that queries both vaults using the multimodal cognition to retrieve context-relevant evidence; (iii) a condenser that reconstructs the retrieved evidence into compact short-term and long-term latent memory tokens; and (iv) a weaver that injects these memory tokens with the current observation and instruction into one continuous embedding sequence. By representing, retrieving, and consuming historical experience entirely in the same continuous latent space, LaMem-VLA enables memory to directly participate in VLA reasoning and guide action generation under a bounded context. Extensive experiments on SimplerEnv and LIBERO demonstrate the superiority of our LaMem-VLA.",
+          "authors": [
+            "Hongyu Qu",
+            "Jianzhe Gao",
+            "Xiaobin Hu",
+            "Shaohuan Yang",
+            "Xinlei Yu",
+            "Rui Yan",
+            "Wenguan Wang",
+            "Xiangbo Shu",
+            "Shuicheng Yan"
+          ],
+          "primary_category": "cs.RO",
+          "categories": [
+            "cs.RO",
+            "cs.CV"
+          ],
+          "published": "2026-07-08T16:26:06+00:00",
+          "link": "https://arxiv.org/pdf/2607.07608v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "proposes LaMem-VLA with latent memory tokens interwoven with multimodal reasoning for end-to-end unified architecture",
+          "llm_evidence_cn": "提出LaMem-VLA，将潜在记忆令牌与多模态推理交织，实现端到端统一架构",
+          "llm_evidence": "提出LaMem-VLA，将潜在记忆令牌与多模态推理交织，实现端到端统一架构",
+          "canonical_evidence": "提出LaMem-VLA，将潜在记忆令牌与多模态推理交织，实现端到端统一架构",
+          "llm_tldr_en": "Introduces a latent-memory-native VLA framework that reconstructs historical experience into latent memory tokens and interweaves them with multimodal reasoning for long-horizon tasks.",
+          "llm_tldr_cn": "主流VLA模型因马尔可夫假设难以处理长时域任务。本文提出LaMem-VLA，将历史经验重建为潜在记忆令牌，并直接融入VLA推理过程，打破记忆与推理的隔离。实验证明该方法在长程操作任务上显著优于现有记忆增强VLA，为VLA架构设计提供了新的记忆融合范式。",
+          "llm_tldr": "主流VLA模型因马尔可夫假设难以处理长时域任务。本文提出LaMem-VLA，将历史经验重建为潜在记忆令牌，并直接融入VLA推理过程，打破记忆与推理的隔离。实验证明该方法在长程操作任务上显著优于现有记忆增强VLA，为VLA架构设计提供了新的记忆融合范式。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "end to end unified multimodal architecture design for vision language action tasks",
+          "matched_requirement_id": "req-10",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.07608v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.06678v1",
+          "source": "arxiv",
+          "title": "NativeMEM: Native Memory Compression for Long-Horizon Robotic Manipulation",
+          "abstract": "How can pretrained Vision-Language-Action (VLA) models retain long-horizon visual histories with high-frequency updates without sacrificing efficiency? Existing approaches rely on external memory management, which restrains either the memory horizon or the reactiveness of pretrained policies. To this end, we present NativeMEM, a VLA policy that features long-term and real-time updated memory. At its core is an efficient memory encoding scheme, Native Memory Compression, which repurposes the VLA's own vision encoder to compress each historical frame from each camera view into a single token. Appended to the input sequence, these memory tokens enable the pretrained VLA to attend over long-term history with negligible latency overhead, requiring neither an external planner nor a freshly initialized memory module. To align the memory tokens with the pretrained policy, we first develop a generic memory tokenizer under the supervision of a frozen VLA on memory-demanding data, and then unfreeze the VLA for task-specific fine-tuning. NativeMEM consistently outperforms prior methods, boosting success rates from 32.4% to 84.0% in simulation and up to 98.7% on real robots, while maintaining low inference latency and GPU memory usage. Notably, NativeMEM exhibits high data efficiency by achieving competitive results with prior arts using only 20% of the training data.",
+          "authors": [
+            "Ziye Wang",
+            "Modi Shi",
+            "Chaojun Ni",
+            "Jiazhi Yang",
+            "Mengdi Li",
+            "Zhizhong Su",
+            "Tianwei Lin",
+            "Hongyang Li"
+          ],
+          "primary_category": "cs.RO",
+          "categories": [
+            "cs.RO"
+          ],
+          "published": "2026-07-07T18:00:53+00:00",
+          "link": "https://arxiv.org/pdf/2607.06678v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "proposes NativeMEM, a VLA policy with long-term real-time memory compression using the VLA's own vision encoder",
+          "llm_evidence_cn": "提出NativeMEM，一种利用VLA自身视觉编码器进行长期实时记忆压缩的VLA策略",
+          "llm_evidence": "提出NativeMEM，一种利用VLA自身视觉编码器进行长期实时记忆压缩的VLA策略",
+          "canonical_evidence": "提出NativeMEM，一种利用VLA自身视觉编码器进行长期实时记忆压缩的VLA策略",
+          "llm_tldr_en": "Proposes Native Memory Compression that repurposes the VLA's own vision encoder to compress history into single tokens, enabling efficient long-term memory with negligible overhead.",
+          "llm_tldr_cn": "预训练VLA模型难以高效保留高频更新的长时视觉历史。本文提出NativeMEM策略，其核心是原生记忆压缩，利用VLA自身视觉编码器将每帧压缩为单个记忆令牌，附加到输入序列中。无需外部记忆或额外训练，即可使VLA关注长期历史，在长时操作任务上显著提升成功率。",
+          "llm_tldr": "预训练VLA模型难以高效保留高频更新的长时视觉历史。本文提出NativeMEM策略，其核心是原生记忆压缩，利用VLA自身视觉编码器将每帧压缩为单个记忆令牌，附加到输入序列中。无需外部记忆或额外训练，即可使VLA关注长期历史，在长时操作任务上显著提升成功率。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "VLA model",
+          "matched_requirement_id": "req-6",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.06678v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.04171v1",
+          "source": "arxiv",
+          "title": "XS-VLA: Coupling Coarse-grained Spatial Distillation with Latent Flow Matching for Lightweight Robotic Control",
+          "abstract": "Large Vision-Language Models (LVLMs) have shown strong multimodal understanding and spatial grounding, but their computational cost limits real-time robotic control. In contrast, lightweight models are suitable for edge deployment but often suffer from \"spatial blindness\", namely weak native spatial prediction ability. Training Vision-Language-Action (VLA) models on mixed human demonstrations can also degrade policy performance due to highly diverse behaviors. To address these limitations, we propose XS-VLA, a two-stage framework for efficient and spatially grounded robotic manipulation. First, we distill spatial semantic knowledge from Qwen3-VL-4B into the SmolVLM2-0.25B backbone by fine-tuning on curated coarse-grained spatial descriptions, turning the lightweight model into a spatially grounded engine. Second, we use this enhanced backbone to condition a Latent Flow Matching policy. Unlike deterministic controllers, our policy combines a Conditional Variational Autoencoder (CVAE) with Flow Matching dynamics to model complex multimodal action distributions. On the LIBERO benchmark, XS-VLA achieves state-of-the-art performance among models with fewer than 0.5B parameters. It improves average success rates by up to 7.2 percent, including a 23 percent gain on LIBERO-Long, over the SmolVLA 0.25B baseline, and outperforms the larger 2.2B vanilla SmolVLA. Ablations show that spatial tuning and generative latent flow control substantially improve lightweight VLA performance, delivering a 3.2 times speedup in mission execution over the previous lightweight flow matching policy.",
+          "authors": [
+            "Lei Iok Tong",
+            "Qingchen Xie",
+            "Wei Huang",
+            "Ying Jie Yap",
+            "Yujie Zhang",
+            "Qianzhi Li",
+            "Xiaolong Liu",
+            "Zhidong Deng"
+          ],
+          "primary_category": "cs.RO",
+          "categories": [
+            "cs.RO",
+            "cs.LG"
+          ],
+          "published": "2026-07-05T08:34:39+00:00",
+          "link": "https://arxiv.org/pdf/2607.04171v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "Vision-Language-Action models, lightweight robotic control, spatial distillation",
+          "llm_evidence_cn": "视觉语言动作模型，轻量化机器人控制，空间蒸馏",
+          "llm_evidence": "视觉语言动作模型，轻量化机器人控制，空间蒸馏",
+          "canonical_evidence": "视觉语言动作模型，轻量化机器人控制，空间蒸馏",
+          "llm_tldr_en": "Proposes XS-VLA, a two-stage framework that distills spatial knowledge from a large VLM into a lightweight backbone for efficient VLA control.",
+          "llm_tldr_cn": "该论文针对大型VLM计算成本高和轻量模型空间感知弱的问题，提出XS-VLA两阶段框架：首先从大模型蒸馏空间语义知识到小模型，再通过潜在流匹配生成动作。在多个机器人任务上实现了轻量、高效、空间准确的控制。",
+          "llm_tldr": "该论文针对大型VLM计算成本高和轻量模型空间感知弱的问题，提出XS-VLA两阶段框架：首先从大模型蒸馏空间语义知识到小模型，再通过潜在流匹配生成动作。在多个机器人任务上实现了轻量、高效、空间准确的控制。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "VLA model",
+          "matched_requirement_id": "req-6",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.04171v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.02158v1",
+          "source": "arxiv",
+          "title": "Efficient PEFT Methods with Adaptive Checkpointing for Vision Models and VLMs on Resource Constrained Consumer-GPUs",
+          "abstract": "Modern pretrained vision models achieve strong accuracy but demand substantial GPU memory for fine-tuning, making edge deployment impractical. This paper compares five parameter-efficient fine-tuning (PEFT) methods (Full FT, LoRA, AdaLoRA, QLoRA, BitFit) on Transformers- (ViT-Small, TinyViT) and Mamba-based vision backbones (Vim-Small, MambaVision-T) under an on-device VRAM budget (e.g., 2 GB), together with three gradient-checkpointing strategies (none, static, and a proposed memory-budget-aware adaptive algorithm); and we evaluate three families of foundation-model baselines: zero-shot contrastive vision language models (OpenCLIP, SigLIP), self-supervised vision backbones with lightweight evaluation protocols (DINOv2), and autoregressive VLMs for prompt-based classification (PaliGemma, MobileVLM, SmolVLM). Experiments on CIFAR-100 and DTD report accuracy, training time, energy, and the NetScore family of multi-objective metrics, which we extend with two deployment-aware variants. QLoRA and BitFit cut energy 20-30% at a 1-2% accuracy cost; the adaptive algorithm reduces peak memory 43-79% with 9-30% energy overhead. DINOv2 surpasses fine-tuned models on CIFAR-100 (0.917 vs. 0.897) at a fraction of the energy, while small autoregressive VLMs remain uncompetitive.",
+          "authors": [
+            "Altay Toktassyn",
+            "Jurn-Gyu Park"
+          ],
+          "primary_category": "cs.CV",
+          "categories": [
+            "cs.CV"
+          ],
+          "published": "2026-07-02T13:31:29+00:00",
+          "link": "https://arxiv.org/pdf/2607.02158v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "PEFT methods comparison, LoRA, AdaLoRA, QLoRA, BitFit on vision and VLMs",
+          "llm_evidence_cn": "PEFT方法比较，LoRA、AdaLoRA、QLoRA、BitFit在视觉和VLM上的应用",
+          "llm_evidence": "PEFT方法比较，LoRA、AdaLoRA、QLoRA、BitFit在视觉和VLM上的应用",
+          "canonical_evidence": "PEFT方法比较，LoRA、AdaLoRA、QLoRA、BitFit在视觉和VLM上的应用",
+          "llm_tldr_en": "Compares five PEFT methods on vision and VLMs under limited VRAM, proposing adaptive checkpointing for efficient fine-tuning.",
+          "llm_tldr_cn": "该论文在资源受限GPU上系统比较了全微调、LoRA、AdaLoRA、QLoRA和BitFit五种PEFT方法在视觉模型和VLM上的表现，并提出了面向内存预算的自适应梯度检查点策略，为边缘部署提供了高效微调方案。",
+          "llm_tldr": "该论文在资源受限GPU上系统比较了全微调、LoRA、AdaLoRA、QLoRA和BitFit五种PEFT方法在视觉模型和VLM上的表现，并提出了面向内存预算的自适应梯度检查点策略，为边缘部署提供了高效微调方案。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "PEFT",
+          "matched_requirement_id": "req-2",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.02158v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.03693v1",
+          "source": "arxiv",
+          "title": "CoRE-VLA: Towards Scalable and Robust Vision-Language-Action Modeling via Conditional Routing of Experts",
+          "abstract": "Vision-language-action (VLA) models have advanced generalist robotic manipulation, yet real-world deployment reveals a fundamental challenge: robots are equipped with diverse and heterogeneous sensor configurations, auxiliary sensors can fail unexpectedly during operation, and different robot embodiments often lack certain sensors by design. A unified policy that can exploit auxiliary perceptual inputs when available while remaining reliable under sensor absence, whether incidental or by design, is therefore essential for practical deployment. However, existing VLA policies couple action generation to a fixed sensor set through shared dense computation, making them brittle when sensors are missing and limiting their ability to specialize across diverse tasks and long-horizon behaviors. We propose CoRE-VLA, a scalable and robust VLA framework that formulates action generation as context-conditioned sparse computation. Sensor availability gates modality-specialized experts, enabling graceful degradation under missing sensors without retraining. Task intent further routes action-side representations to task-relevant experts, improving specialization across diverse tasks and long-horizon subgoals. While the framework is designed to accommodate different auxiliary sensors, we focus on depth as a representative and practically important auxiliary modality in our experiments. Experiments on LIBERO, RoboCasa GR1 Tabletop, and real-world dual-arm manipulation show that CoRE-VLA achieves strong results on long-horizon and multi-task benchmarks, and outperforms both a dense-action-generator ablation and a strong pretrained VLA baseline, including in zero-shot generalization to unseen scenarios. Modality analysis shows that CoRE-VLA can exploit auxiliary depth when available while remaining robust when depth is unavailable during deployment.",
+          "authors": [
+            "Haozhe Zhang",
+            "Sixian Li",
+            "Yifei Zhang",
+            "Zezheng Huai",
+            "Hao Chen",
+            "Chunhua Shen",
+            "Jingjing Gong",
+            "Xipeng Qiu"
+          ],
+          "primary_category": "cs.RO",
+          "categories": [
+            "cs.RO"
+          ],
+          "published": "2026-07-04T03:58:09+00:00",
+          "link": "https://arxiv.org/pdf/2607.03693v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "scalable and robust VLA via conditional routing of experts for heterogeneous sensors",
+          "llm_evidence_cn": "通过条件专家路由实现异构传感器下可扩展鲁棒的VLA模型",
+          "llm_evidence": "通过条件专家路由实现异构传感器下可扩展鲁棒的VLA模型",
+          "canonical_evidence": "通过条件专家路由实现异构传感器下可扩展鲁棒的VLA模型",
+          "llm_tldr_en": "Proposes CoRE-VLA, using conditional routing of experts to handle heterogeneous sensor configurations and sensor absence in VLA models.",
+          "llm_tldr_cn": "现实中的机器人传感器配置多样且可能故障，现有VLA模型固定传感器输入，鲁棒性差。本文提出CoRE-VLA，条件专家路由机制根据可用传感器动态选择子模型，使策略在传感器缺失时仍能可靠运行。实验表明该方法在多种传感器缺失场景下保持高性能。",
+          "llm_tldr": "现实中的机器人传感器配置多样且可能故障，现有VLA模型固定传感器输入，鲁棒性差。本文提出CoRE-VLA，条件专家路由机制根据可用传感器动态选择子模型，使策略在传感器缺失时仍能可靠运行。实验表明该方法在多种传感器缺失场景下保持高性能。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "state of the art Vision Language Action model backbone and cross modal fusion architecture",
+          "matched_requirement_id": "req-8",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.03693v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.04591v1",
+          "source": "arxiv",
+          "title": "Simple-to-Complex Structured Demonstrations for Vision-Language-Action Learning",
+          "abstract": "Vision-Language-Action (VLA) models have demonstrated strong capabilities in robotic manipulation by integrating visual perception, language understanding, and robot action generation. Existing research has primarily focused on improving model architectures, training strategies, and dataset scale, while little attention has been paid to how demonstrations are collected and organized. We identify demonstration organization as a fundamental yet overlooked aspect of imitation learning, as it directly affects policy learning efficiency, training stability, and policy generalization. To address this gap, we propose a simple-to-complex structured demonstration collection strategy for VLA learning using a dual-arm robotic platform. Our approach systematically organizes data through three general principles: (i) decomposing complex manipulation tasks into progressively learnable sub-skills, (ii) standardizing the interaction environment to reduce unnecessary variability, and (iii) organizing demonstrations according to progressively increasing task complexity. This structured design enables VLA models to first acquire fundamental manipulation skills before learning increasingly complex task compositions, facilitating more effective learning of long-horizon manipulation tasks. We evaluate the proposed strategy on two representative robotic manipulation tasks: block grasping and sorting, and towel folding. Experimental results show consistent improvements in task success rate and training stability compared with the baseline method of directly collecting end-to-end complete task trajectories. These findings highlight demonstration organization as a previously underexplored but important factor in VLA learning and provide practical insights into efficient skill acquisition, scalable dataset construction, and long-horizon robotic manipulation.",
+          "authors": [
+            "Xinchuan Qiu",
+            "Yi Yu"
+          ],
+          "primary_category": "cs.RO",
+          "categories": [
+            "cs.RO",
+            "cs.AI"
+          ],
+          "published": "2026-07-06T01:38:43+00:00",
+          "link": "https://arxiv.org/pdf/2607.04591v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "proposes demonstration collection strategy for VLA models to improve generalization",
+          "llm_evidence_cn": "提出VLA模型演示收集策略提升泛化",
+          "llm_evidence": "提出VLA模型演示收集策略提升泛化",
+          "canonical_evidence": "提出VLA模型演示收集策略提升泛化",
+          "llm_tldr_en": "Proposes a simple-to-complex demonstration collection strategy for VLA models, improving policy learning efficiency and generalization.",
+          "llm_tldr_cn": "论文指出演示组织是模仿学习中被忽视的关键因素，影响策略学习效率和泛化。提出一种从简单到复杂的结构化演示收集策略，用于双机械臂VLA学习。该方法通过系统组织演示数据，提升了训练稳定性和策略在新场景下的泛化能力。",
+          "llm_tldr": "论文指出演示组织是模仿学习中被忽视的关键因素，影响策略学习效率和泛化。提出一种从简单到复杂的结构化演示收集策略，用于双机械臂VLA学习。该方法通过系统组织演示数据，提升了训练稳定性和策略在新场景下的泛化能力。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "VLA model",
+          "matched_requirement_id": "req-6",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.04591v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.04517v1",
+          "source": "arxiv",
+          "title": "VLA Grounder: Language-Conditioning Space Optimization for Black-Box VLA Models",
+          "abstract": "Vision-Language-Action (VLA) models are commonly treated as end-to-end action policies conditioned on natural-language task descriptions. In practice, however, their behavior often depends sharply on how the instruction is phrased, suggesting that language is not merely a task label but an optimizable conditioning input. We study whether frozen VLA policies can be improved by optimizing language space rather than updating action weights. Our method introduces a language-conditioning space policy that translates a human instruction into a short VLA-grounded command using object appearance, spatial relations, and target-grounding cues. The language-conditioning space policy is initialized with a failure-derived command-space prior and optimized with reinforcement learning from sparse task-completion rewards, while the downstream VLA remains fully frozen. This yields language-conditioning space optimization: RL discovers which VLA-grounded commands best elicit successful behavior from the frozen action policy. Experiments on RL4VLA and VL-Think show that language-conditioning space optimization improves success on instruction-sensitive, symbolic, and multi-object manipulation tasks, demonstrating that language can serve as an optimizable variable for a robot foundation models. Website: https://tttonyalpha.github.io/vla_grounder",
+          "authors": [
+            "Damir Shodiev",
+            "Aleksei Staroverov",
+            "Nikita Kachaev",
+            "Alexey K. Kovalev",
+            "Aleksandr I. Panov"
+          ],
+          "primary_category": "cs.AI",
+          "categories": [
+            "cs.AI"
+          ],
+          "published": "2026-07-05T21:41:25+00:00",
+          "link": "https://arxiv.org/pdf/2607.04517v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "optimizes language conditioning space for frozen VLA policies",
+          "llm_evidence_cn": "优化冻结VDA策略的语言条件空间",
+          "llm_evidence": "优化冻结VDA策略的语言条件空间",
+          "canonical_evidence": "优化冻结VDA策略的语言条件空间",
+          "llm_tldr_en": "Introduces a method to optimize language conditioning space for frozen VLA policies, improving task performance without weight updates.",
+          "llm_tldr_cn": "论文发现VLA模型对指令措辞敏感，语言不仅是任务标签，更是可优化的条件输入。提出VLA Grounder，通过语言条件空间策略将人类指令转换为VLA接地指令，利用失败先验初始化并优化该策略，在不更新模型权重的情况下提升性能。在多个任务上验证了有效性。",
+          "llm_tldr": "论文发现VLA模型对指令措辞敏感，语言不仅是任务标签，更是可优化的条件输入。提出VLA Grounder，通过语言条件空间策略将人类指令转换为VLA接地指令，利用失败先验初始化并优化该策略，在不更新模型权重的情况下提升性能。在多个任务上验证了有效性。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "VLA model",
+          "matched_requirement_id": "req-6",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.04517v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.02092v1",
+          "source": "arxiv",
+          "title": "Guided Action Flow: Q-Guided Inference for Flow-Matching Vision-Language-Action Policies",
+          "abstract": "Flow-matching vision-language-action policies generate robot action chunks through an iterative transport process, creating an opportunity for test-time guidance without retraining the base policy. We study this opportunity in Guided Action Flow, an inference-time framework that keeps a pretrained SmolVLA policy frozen and uses a learned action-chunk critic to guide its reverse-time flow sampler. The critic is trained from real success and failure rollouts, can condition on task-description features from the frozen SmolVLA language pathway, and is used only through action gradients during sampling. We evaluate the approach on LIBERO manipulation tasks. A single-task critic improves success from 68.0% to 82.0% on one seed window and from 82.0% to 86.0% on another. A multi-family task-description critic improves validation success from 46.0% to 56.0%, while the locked held-out test gain is positive but modest, from 65.0% to 67.5%. These results support the feasibility of Q-guided inference for frozen flow-matching VLA policies, while showing that critic generalization and uncertainty-aware guidance remain the central bottlenecks.",
+          "authors": [
+            "Liuhaichen Yang",
+            "Zhuang Jiang",
+            "Chenchao Sheng",
+            "Zezhi Tang"
+          ],
+          "primary_category": "cs.RO",
+          "categories": [
+            "cs.RO",
+            "cs.AI"
+          ],
+          "published": "2026-07-02T12:30:50+00:00",
+          "link": "https://arxiv.org/pdf/2607.02092v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "inference-time guidance for flow-matching VLA policies",
+          "llm_evidence_cn": "对流匹配VLA策略的推理时引导",
+          "llm_evidence": "对流匹配VLA策略的推理时引导",
+          "canonical_evidence": "对流匹配VLA策略的推理时引导",
+          "llm_tldr_en": "An inference-time framework for flow-matching VLA policies using a learned critic, improving success rates without retraining.",
+          "llm_tldr_cn": "论文利用流匹配VLA策略的迭代特性，提出推理时引导框架Guided Action Flow。保持预训练SmolVLA冻结，训练动作块评论家通过梯度引导采样。在LIBERO任务上，单任务评论家将成功率从68%提升至82%，表明推理时引导是一种有效且高效的方法。",
+          "llm_tldr": "论文利用流匹配VLA策略的迭代特性，提出推理时引导框架Guided Action Flow。保持预训练SmolVLA冻结，训练动作块评论家通过梯度引导采样。在LIBERO任务上，单任务评论家将成功率从68%提升至82%，表明推理时引导是一种有效且高效的方法。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "VLA model",
+          "matched_requirement_id": "req-6",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.02092v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.03146v1",
+          "source": "arxiv",
+          "title": "Exp2VLA: Enabling Vision-Language-Action for Drone Navigation from Expert Demonstrations",
+          "abstract": "Vision-language-action (VLA) models open a new path toward intuitive robot control by directly linking perception, language, and action in a single end-to-end framework. Yet for UAVs, practical adoption remains difficult because existing solutions are either computationally heavy or insufficiently capable in complex environments. In this work, we propose a practical expert-distillation pipeline (Exp2VLA) for language-conditioned drone navigation. The core idea is to distill expert behavior, obtained from reinforcement learning, teleoperation, or other controllers, into training data that can be used to fine-tune compact VLA models. This allows existing control strategies to be transferred into a unified language-guided navigation model, reducing manual system integration and lowering the barrier for deploying new robot behaviors. Experiments in both sim-to-sim and simulation-in-the-loop settings across multi-object scenes show that the fine-tuned models can handle varied semantic commands and generalize to unseen target compositions. The proposed framework demonstrates how expert-policy distillation can help mechatronic systems move from specialized control modules toward more flexible and reusable robot intelligence.",
+          "authors": [
+            "Van Huyen Dang",
+            "Kabilesh Rajendran",
+            "Erdi Sayar",
+            "Erdal Kayacan"
+          ],
+          "primary_category": "cs.RO",
+          "categories": [
+            "cs.RO"
+          ],
+          "published": "2026-07-03T09:37:48+00:00",
+          "link": "https://arxiv.org/pdf/2607.03146v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "uses reinforcement learning experts to distill into VLA models",
+          "llm_evidence_cn": "利用强化学习专家蒸馏到VLA模型",
+          "llm_evidence": "利用强化学习专家蒸馏到VLA模型",
+          "canonical_evidence": "利用强化学习专家蒸馏到VLA模型",
+          "llm_tldr_en": "Transfers expert behaviors (including from RL) into VLA models for drone navigation via distillation and fine-tuning.",
+          "llm_tldr_cn": "论文将VLA模型扩展到无人机导航，面临计算和性能挑战。提出Exp2VLA专家蒸馏管道，将强化学习等控制器获得的专家行为转换为训练数据，用于微调紧凑VLA模型。该方法将现有控制策略转化为统一语言引导的导航模式，实现高效部署。",
+          "llm_tldr": "论文将VLA模型扩展到无人机导航，面临计算和性能挑战。提出Exp2VLA专家蒸馏管道，将强化学习等控制器获得的专家行为转换为训练数据，用于微调紧凑VLA模型。该方法将现有控制策略转化为统一语言引导的导航模式，实现高效部署。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "reinforcement learning",
+          "matched_requirement_id": "req-1",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.03146v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.04610v1",
+          "source": "arxiv",
+          "title": "RoboVista: Evaluating Vision Language Models for Diverse Robot Applications",
+          "abstract": "Diverse applications for robotics, such as industry and agriculture, require robots to operate across various embodiments, changing visual conditions, and complex planning. Vision-Language Models (VLMs) offer a promising foundation for general-purpose and interpretable robotic reasoning. Aligning VLMs with diverse robot applications requires a modular understanding of the individual decision components that underlie robotic behavior. Capturing such structure is challenging for conventional robot benchmarks that are primarily based on teleoperated, end-to-end datasets. We propose Robot Question Answering (RQA), a modular evaluation framework and RoboVista, a benchmark curated from real robotic systems, research papers, and expert annotations. RoboVista contains 474 Visual Question Answering (VQA) instances with human annotated reasoning and covers 39 unique task types in agricultural, industrial, domestic, surgical robotics, autonomous driving, and open robot datasets. Experiments on RoboVista show that state-of-the-art VLMs exhibit substantial gaps. Physical robot experiments suggest strong correlation between RoboVista performance and real-world task execution.",
+          "authors": [
+            "Shuangyu Xie",
+            "Kaiyuan Chen",
+            "Ziyang Chen",
+            "Simeon Adebola",
+            "Yixuan Huang",
+            "Zehan Ma",
+            "Tianshuang Qiu",
+            "Wentao Yuan",
+            "Dhruv Shah",
+            "Pannag R. Sanketi",
+            "Ken Goldberg"
+          ],
+          "primary_category": "cs.RO",
+          "categories": [
+            "cs.RO"
+          ],
+          "published": "2026-07-06T02:34:56+00:00",
+          "link": "https://arxiv.org/pdf/2607.04610v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "Introduces RoboVista benchmark for evaluating VLM generalization across diverse robot applications",
+          "llm_evidence_cn": "提出RoboVista基准，评估VLM在多种机器人应用中的泛化能力",
+          "llm_evidence": "提出RoboVista基准，评估VLM在多种机器人应用中的泛化能力",
+          "canonical_evidence": "提出RoboVista基准，评估VLM在多种机器人应用中的泛化能力",
+          "llm_tldr_en": "RoboVista presents a modular evaluation framework and benchmark for vision-language models in diverse robotic settings, targeting generalization to unseen environments and embodiments.",
+          "llm_tldr_cn": "针对VLM在机器人应用中泛化评估困难的问题，RoboVista提出了机器人问答（RQA）模块化评估框架和从真实系统及专家标注构建的基准，系统评估模型在不同环境、形态和任务下的泛化能力，为VLA模型的通用性衡量提供了标准化工具。",
+          "llm_tldr": "针对VLM在机器人应用中泛化评估困难的问题，RoboVista提出了机器人问答（RQA）模块化评估框架和从真实系统及专家标注构建的基准，系统评估模型在不同环境、形态和任务下的泛化能力，为VLA模型的通用性衡量提供了标准化工具。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "generalization capabilities of VLA in unseen environments",
+          "matched_requirement_id": "req-7",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.04610v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.06522v1",
+          "source": "arxiv",
+          "title": "Bridging Physical Reasoning and Task Generalization via Visual Action Outcome Reasoning Alignment",
+          "abstract": "Vision-language models (VLMs) struggle to generalize in interactive physical reasoning, particularly under unseen tasks and environments. Two key failure modes are prominent: hallucinated chain-of-thought (CoT) reasoning that contradicts physical reality, and misalignment between the model's reasoning and actions. We present VAORA (Visual Action Outcome Reasoning Alignment), a novel reward design that directly addresses both issues. VAORA introduces two complementary rewards: Visual Alignment Reward, which anchors VLM reasoning to the visual context independent of the agent action itself, and Visual-Action Alignment Reward, which grounds reasoning in the visual outcome induced by the model's action. Together, these rewards suppress hallucinated CoT and reduce the gap between reasoning and behavior. To improve training stability, we further employ smooth, dense rewards by estimating success probabilities using a pre-trained in-domain expert agent. Experiments on PHYRE and Virtual Tool support our performances across novel-task and unseen-environment settings, confirming that grounded and generalizable physical intelligence can be induced through VAORA.",
+          "authors": [
+            "Han-Jun Ko",
+            "Jr-Jen Chen",
+            "Haobo Yuan",
+            "Hsin-Ying Lee",
+            "Tiancheng Shen",
+            "Ming-Hsuan Yang",
+            "Yu-Chiang Frank Wang"
+          ],
+          "primary_category": "cs.AI",
+          "categories": [
+            "cs.AI",
+            "cs.CV"
+          ],
+          "published": "2026-07-07T17:27:59+00:00",
+          "link": "https://arxiv.org/pdf/2607.06522v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "Generalization in physical reasoning via reward alignment",
+          "llm_evidence_cn": "通过奖励对齐提升物理推理泛化",
+          "llm_evidence": "通过奖励对齐提升物理推理泛化",
+          "canonical_evidence": "通过奖励对齐提升物理推理泛化",
+          "llm_tldr_en": "Proposes VAORA reward design to align VLM reasoning with visual outcomes, improving generalization in unseen physical reasoning tasks.",
+          "llm_tldr_cn": "视觉语言模型在交互式物理推理中泛化困难，存在幻觉推理和推理-动作错位两大问题。本文提出VAORA，引入视觉对齐奖励和视觉行动对齐奖励，将模型推理锚定到视觉上下文和行动结果。该方法作为奖励信号可有效提升模型在未见任务和环境中的泛化能力。",
+          "llm_tldr": "视觉语言模型在交互式物理推理中泛化困难，存在幻觉推理和推理-动作错位两大问题。本文提出VAORA，引入视觉对齐奖励和视觉行动对齐奖励，将模型推理锚定到视觉上下文和行动结果。该方法作为奖励信号可有效提升模型在未见任务和环境中的泛化能力。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "generalization capabilities of VLA in unseen environments",
+          "matched_requirement_id": "req-7",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.06522v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.01813v1",
+          "source": "arxiv",
+          "title": "MMBench-Live: A Continuously Evolving Benchmark for Multimodal Models",
+          "abstract": "Evaluation benchmarks are essential for assessing vision-language models (VLMs), but most multimodal benchmarks are static, making them vulnerable to temporal staleness, data contamination, and costly maintenance. We present MMBench-Live, a continuously evolving multimodal benchmark built by a multi-agent-driven automated pipeline. Our framework treats benchmark evolution as task-guided dataset construction, integrating structured benchmark specification, feedback-controlled real-time data acquisition, and verifiable QA generation with executable reasoning. To maintain cross-version comparability, we introduce a distribution-consistent update strategy that extracts task-related visual patterns from the original benchmark to guide data collection and filtering. Instantiated from MMBench, MMBench-Live contains 5.9K newly generated evaluation instances with a high answer correctness rate, while each update costs about USD 30 and takes 1-2 hours. Extensive evaluations show that MMBench-Live preserves stable model rankings, maintains semantic alignment with the original benchmark, and exhibits weaker contamination-related memorization signals, suggesting a practical and scalable paradigm for sustainable multimodal benchmark evolution. The project is available at https://github.com/PRIS-CV/MMBench-Live.",
+          "authors": [
+            "Yuanzhi Liu",
+            "Shousheng Zhao",
+            "Bo Zhou",
+            "Kongming Liang",
+            "Zhanyu Ma"
+          ],
+          "primary_category": "cs.CV",
+          "categories": [
+            "cs.CV",
+            "cs.AI"
+          ],
+          "published": "2026-07-02T07:27:58+00:00",
+          "link": "https://arxiv.org/pdf/2607.01813v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "Multimodal benchmark for VLMs",
+          "llm_evidence_cn": "面向视觉语言模型的多模态基准",
+          "llm_evidence": "面向视觉语言模型的多模态基准",
+          "canonical_evidence": "面向视觉语言模型的多模态基准",
+          "llm_tldr_en": "Introduces MMBench-Live, a continuously evolving multimodal benchmark using multi-agent pipeline to mitigate static benchmark issues.",
+          "llm_tldr_cn": "现有静态多模态基准存在时间过时、数据污染等问题。本文提出MMBench-Live，一个持续演进的基准，利用多智能体自动管道实现结构化基准规范、实时数据获取和可验证QA生成。通过分布一致的更新策略，维护跨版本可比性。",
+          "llm_tldr": "现有静态多模态基准存在时间过时、数据污染等问题。本文提出MMBench-Live，一个持续演进的基准，利用多智能体自动管道实现结构化基准规范、实时数据获取和可验证QA生成。通过分布一致的更新策略，维护跨版本可比性。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "multimodal learning",
+          "matched_requirement_id": "req-3",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.01813v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.02195v1",
+          "source": "arxiv",
+          "title": "Bridge-WA: Predicting Where and How the World Changes for Robotic Action",
+          "abstract": "General-purpose vision-language-action models benefit from large vision-language priors, but effective manipulation also requires anticipating action-relevant scene changes. Existing world-action models often rely on large generative world models or dense future rollouts, which are expensive and spend capacity on visual details weakly coupled to control. We present Bridge-WA, a lightweight world-action framework that distills a frozen future-change teacher into three compact priors: future tokens for intended outcomes, change maps for intervention support, and motion-flow maps for local transition direction. A WorldBridge conditions the action transformer on these priors through multi-source attention memories and spatial-temporal biases, while the teacher model is removed at inference. Across VLABench, RoboTwin2.0, LIBERO-Plus and real-robot evaluations, Bridge-WA improves task success, progress, and robustness, with particularly clear gains under out-of-distribution visual shifts. By focusing action generation on where and how the scene will change, Bridge-WA suppresses nuisance appearance factors such as background, lighting, and distractors, leading to better generalization without deployment-time dense future-image generation. Code and visualizations are available at: https://hcplab-sysu.github.io/BRIDGE-WA .",
+          "authors": [
+            "Yongjie Bai",
+            "Hanting Wang",
+            "Mingtong Dai",
+            "Qijun Zhong",
+            "Yang Liu",
+            "Liang Lin"
+          ],
+          "primary_category": "cs.RO",
+          "categories": [
+            "cs.RO"
+          ],
+          "published": "2026-07-02T14:03:44+00:00",
+          "link": "https://arxiv.org/pdf/2607.02195v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "proposes a lightweight world-action framework for VLA models",
+          "llm_evidence_cn": "提出用于VLA模型的轻量级世界动作框架",
+          "llm_evidence": "提出用于VLA模型的轻量级世界动作框架",
+          "canonical_evidence": "提出用于VLA模型的轻量级世界动作框架",
+          "llm_tldr_en": "Bridge-WA distills a frozen future-change teacher into three compact priors and uses a WorldBridge to condition action transformer.",
+          "llm_tldr_cn": "现有世界动作模型依赖大型生成式世界模型或密集未来展开，计算开销大。本文提出Bridge-WA轻量级框架，从冻结的未来变化教师模型中蒸馏出三种紧凑先验（未来token、变化图、运动流），通过WorldBridge利用多源注意力记忆和时空偏置调节动作Transformer。",
+          "llm_tldr": "现有世界动作模型依赖大型生成式世界模型或密集未来展开，计算开销大。本文提出Bridge-WA轻量级框架，从冻结的未来变化教师模型中蒸馏出三种紧凑先验（未来token、变化图、运动流），通过WorldBridge利用多源注意力记忆和时空偏置调节动作Transformer。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "VLA model",
+          "matched_requirement_id": "req-6",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.02195v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.05122v1",
+          "source": "arxiv",
+          "title": "Green for Go, Red for No: Visual Grounding via Semantic Segmentation for VLA Navigation Policies",
+          "abstract": "Vision-language-action (VLA) models enable robot navigation from natural language and visual goals, but remain susceptible to perceptual distractions and ambiguous scene interpretations. This paper presents the first empirical evaluation of visual grounding for VLA navigation policies. We propose a real-time segmentation-based grounding method that highlights traversable areas in green and non-traversable areas in red using SegFormer. Two variants are evaluated: observation-only segmentation and joint observation-goal augmentation. Using OmniVLA on the Grand Tour dataset, we show that visual grounding reduces the mean waypoint error by 27-44% at the farthest waypoint, depending on the instruction length. The benefits are greater for long instructions than for short instructions, and grounding provides little improvement for image goals. Normalized error analysis indicates that grounding primarily acts as a trajectory length regularizer, reducing the predicted path length by 30% without improving per-unit-distance reasoning. Our results indicate that visual grounding offers a simple, computationally inexpensive method to improve VLA navigation without model retraining, although it cannot compensate for missing training signals in out-of-distribution instructions.",
+          "authors": [
+            "Adrian Szvoren",
+            "Dimitrios Kanoulas",
+            "Nilufer Tuptuk"
+          ],
+          "primary_category": "cs.CV",
+          "categories": [
+            "cs.CV",
+            "cs.RO"
+          ],
+          "published": "2026-07-06T14:11:27+00:00",
+          "link": "https://arxiv.org/pdf/2607.05122v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "evaluates visual grounding for VLA navigation policies",
+          "llm_evidence_cn": "评估VLA导航策略中的视觉定位方法",
+          "llm_evidence": "评估VLA导航策略中的视觉定位方法",
+          "canonical_evidence": "评估VLA导航策略中的视觉定位方法",
+          "llm_tldr_en": "First empirical evaluation of visual grounding for VLA navigation. Proposes real-time segmentation-based method that reduces waypoint error by 27-44%.",
+          "llm_tldr_cn": "VLA导航模型易受感知干扰和场景歧义影响。本文首次对VLA导航策略的视觉定位进行实证评估，提出基于SegFormer的实时分割方法，将可通行区域标绿、不可通行区域标红。在Grand Tour数据集上使用OmniVLA模型，最远路径点误差降低27-44%，证明了视觉定位对提升VLA导航鲁棒性的价值。",
+          "llm_tldr": "VLA导航模型易受感知干扰和场景歧义影响。本文首次对VLA导航策略的视觉定位进行实证评估，提出基于SegFormer的实时分割方法，将可通行区域标绿、不可通行区域标红。在Grand Tour数据集上使用OmniVLA模型，最远路径点误差降低27-44%，证明了视觉定位对提升VLA导航鲁棒性的价值。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "VLA model",
+          "matched_requirement_id": "req-6",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.05122v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.02865v1",
+          "source": "arxiv",
+          "title": "DREAMSTEER: Latent World Models Can Steer VLA Policies During Deployment Without Any Finetuning",
+          "abstract": "Pretrained vision-language-action (VLA) policies show promising zero-shot generalization, but often fail under deployment-time distribution shift, leading to decreased robustness and inconsistent instruction following. While prior work commonly tackles this by finetuning on in-distribution data, it assumes demonstrations collected on tasks in the target environment. In this work, we propose DREAMSTEER, a deployment-time steering framework for pretrained VLAs without any finetuning or parameter modifications. The key insight in DREAMSTEER is to leverage a latent world model and a value model to steer pretrained VLA policies. During deployment, DREAMSTEER samples candidate action chunks from a VLA policy and predefined motion primitives, imagines their outcomes using an action-conditioned latent world model, and ranks the imagined trajectories with a language-conditioned value model. Across four real-world manipulation benchmarks with unseen objects, DREAMSTEER improves task success rate from 23.75% to 66.25% and instruction-following accuracy from 38.75% to 56.25% over the base VLA policy.",
+          "authors": [
+            "Hanchen Cui",
+            "Sergio Arnaud",
+            "Arjun Majumdar",
+            "Daniel Dugas",
+            "Elie Aljalbout",
+            "Karthik Desingh",
+            "Krishna Murthy Jatavallabhula",
+            "Franziska Meier"
+          ],
+          "primary_category": "cs.RO",
+          "categories": [
+            "cs.RO"
+          ],
+          "published": "2026-07-03T02:08:50+00:00",
+          "link": "https://arxiv.org/pdf/2607.02865v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "deployment-time steering for VLA policies without finetuning, improving generalization",
+          "llm_evidence_cn": "无需微调的部署时引导方法，提升VLA泛化能力",
+          "llm_evidence": "无需微调的部署时引导方法，提升VLA泛化能力",
+          "canonical_evidence": "无需微调的部署时引导方法，提升VLA泛化能力",
+          "llm_tldr_en": "DREAMSTEER uses a latent world model and value model to steer pretrained VLA policies during deployment without any finetuning.",
+          "llm_tldr_cn": "预训练VLA策略在部署时面临分布偏移。本文提出DREAMSTEER，一种无需微调或参数修改的部署时引导框架，利用潜在世界模型和价值模型对VLA策略采样候选动作并进行引导，有效提升了在分布偏移下的鲁棒性和指令遵循能力。",
+          "llm_tldr": "预训练VLA策略在部署时面临分布偏移。本文提出DREAMSTEER，一种无需微调或参数修改的部署时引导框架，利用潜在世界模型和价值模型对VLA策略采样候选动作并进行引导，有效提升了在分布偏移下的鲁棒性和指令遵循能力。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "generalization capabilities of VLA in unseen environments",
+          "matched_requirement_id": "req-7",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.02865v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.05396v1",
+          "source": "arxiv",
+          "title": "From Fixed to Free Cameras: Calibration-Free View-Robust Vision-Language-Action Model",
+          "abstract": "Real-world robot deployment rarely maintains the training-stage camera setup, where cameras often experience repositioning or remounting depending on actual scenarios. Existing view-robust Vision-Language-Action (VLA) policies tolerate such camera variations only when the camera extrinsics are explicitly provided, making them fragile and hard to use especially when view robustness is critical. We argue that the policy should not be told where the camera is, but rather figure it out by itself. To this end, we introduce Camera-Centric VLA (CamVLA), a new VLA model that decouples manipulation controls from camera geometry by predicting (i) a camera-centric end-effector action expressed in the local camera frame, and (ii) a 6-DoF hand-eye matrix relating cameras to the robot base. A deterministic geometric transformation composes the two predictions into a robot base-frame action. This disentangles how I should move in pose-independent camera-centric action generation from where I am looking from in camera-perspective geometric grounding. The resulting policy is calibration-free, depth-free, and single-view, requiring only a single monocular RGB image as the visual observation and task instruction at deployment. Evaluations in both simulation and real-world robot data show that CamVLA consistently improves success rates across diverse unseen viewpoints. Project page: https://alibaba-damo-academy.github.io/CamVLA/.",
+          "authors": [
+            "Wenhao Li",
+            "Xueying Jiang",
+            "Quanhao Qian",
+            "Deli Zhao",
+            "Shijian Lu",
+            "Gongjie Zhang",
+            "Ran Xu"
+          ],
+          "primary_category": "cs.CV",
+          "categories": [
+            "cs.CV",
+            "cs.AI",
+            "cs.LG",
+            "cs.RO"
+          ],
+          "published": "2026-07-06T17:59:59+00:00",
+          "link": "https://arxiv.org/pdf/2607.05396v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "proposes a view-robust VLA model that adapts to camera variations",
+          "llm_evidence_cn": "提出视角鲁棒VLA模型，无需相机外参适应变化",
+          "llm_evidence": "提出视角鲁棒VLA模型，无需相机外参适应变化",
+          "canonical_evidence": "提出视角鲁棒VLA模型，无需相机外参适应变化",
+          "llm_tldr_en": "CamVLA decouples manipulation controls from camera geometry by predicting camera-centric actions and hand-eye maps.",
+          "llm_tldr_cn": "真实部署中相机位置常变。本文提出CamVLA，通过预测相机坐标系下的末端执行器动作和手眼映射，将操控控制与相机几何解耦，使策略自行适应视角变化，无需标定。实验表明该方法在多种相机配置下保持高性能。",
+          "llm_tldr": "真实部署中相机位置常变。本文提出CamVLA，通过预测相机坐标系下的末端执行器动作和手眼映射，将操控控制与相机几何解耦，使策略自行适应视角变化，无需标定。实验表明该方法在多种相机配置下保持高性能。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "VLA model",
+          "matched_requirement_id": "req-6",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.05396v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2607.03449v1",
+          "source": "arxiv",
+          "title": "HiMe: Hierarchical Embodied Memory for Long-Horizon Vision-Language-Action Control",
+          "abstract": "Current Vision-Language-Action (VLA) models excel at robotic manipulation but often struggle with non-Markovian tasks requiring long-term memory and reasoning due to their reliance on immediate observations. Existing solutions face a ''frequency-competence paradox,'' where stronger reasoning models are too slow for real-time control, while faster models lack sufficient reasoning capabilities. To resolve this architectural misalignment, we propose HiMe, a Hierarchical Embodied Memory framework that decouples embodied intelligence into a high-frequency Executor for execution, a Sentry for working memory, and a Planner for long-term strategy. We also introduce a dynamic knowledge system based on cross-modal semantic schemas and active management mechanisms, allowing robots to maintain memory plasticity through ''Add, Update, and Delete'' operations. This hierarchical design effectively balances the conflict between real-time execution and slow thinking planning, significantly improving success rates in long-horizon tasks. Experiments demonstrate that this approach not only outperforms flat memory baselines but also exhibits the novel ability to self-correct its internal knowledge based on human preferences.",
+          "authors": [
+            "Li Ji",
+            "Siyin Wang",
+            "Pengfang Qian",
+            "Xiaopeng Yu",
+            "Yihai Tian",
+            "Zhaoye Fei",
+            "Jingjing Gong",
+            "Xipeng Qiu"
+          ],
+          "primary_category": "cs.RO",
+          "categories": [
+            "cs.RO",
+            "cs.AI"
+          ],
+          "published": "2026-07-03T16:06:48+00:00",
+          "link": "https://arxiv.org/pdf/2607.03449v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "proposes a hierarchical memory framework for long-horizon VLA control",
+          "llm_evidence_cn": "提出用于长时程VLA控制的分层记忆框架",
+          "llm_evidence": "提出用于长时程VLA控制的分层记忆框架",
+          "canonical_evidence": "提出用于长时程VLA控制的分层记忆框架",
+          "llm_tldr_en": "HiMe decouples embodied intelligence into high-frequency Executor, Sentry, and Planner with cross-modal semantic schemas.",
+          "llm_tldr_cn": "现有VLA模型因依赖即时观察而在非马尔可夫任务中表现不佳。本文提出HiMe，分层具身记忆框架，将智力分为高频执行器、哨兵（工作记忆）和规划器（长期策略），并引入基于跨模态语义模式的知识系统，解决了频率-能力悖论。实验表明HiMe提升了长时程操控任务的性能。",
+          "llm_tldr": "现有VLA模型因依赖即时观察而在非马尔可夫任务中表现不佳。本文提出HiMe，分层具身记忆框架，将智力分为高频执行器、哨兵（工作记忆）和规划器（长期策略），并引入基于跨模态语义模式的知识系统，解决了频率-能力悖论。实验表明HiMe提升了长时程操控任务的性能。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "VLA model",
+          "matched_requirement_id": "req-6",
+          "selection_source": "carryover_cache",
+          "paper_id": "2607.03449v1",
+          "carry_days": 1
+        },
+        {
+          "id": "2606.31723v1",
+          "source": "arxiv",
+          "title": "UniTacVLA: Unified Tactile Understanding and Prediction in Vision Language Action Models",
+          "abstract": "Vision-language-action (VLA) models have achieved strong performance in many robotic manipulation tasks, yet remain limited in contact-rich dexterous manipulation. To overcome this limitation, recent vision-tactile-language-action (VTLA) methods incorporate tactile sensing into VLA models to provide direct contact information. However, they typically treat tactile signals as passive auxiliary inputs, making it difficult to model tactile semantics and future physical interactions. To this end, we propose a unified tactile learning framework for contact-rich manipulation that models tactile signals as dynamic interaction cues for both contact understanding and prediction. Specifically, we construct a unified tactile latent space and jointly model current tactile states and future contact changes through tactile chain-of-thought reasoning and coarse-to-fine future tactile prediction, thereby forming a state-aware and dynamics-aware tactile prior. Based on this prior, we introduce a tactile-action mixed controller that combines real-time and predicted tactile feedback to refine low-frequency action chunks with high-frequency corrections. Real-world experiments on four categories of contact-rich tasks, including adjustment, insertion, wiping, and assembly, under both clean and externally perturbed settings, show that our method improves success rate, manipulation accuracy, and contact robustness over existing methods, demonstrating its effectiveness in dexterous physical interaction.",
+          "authors": [
+            "Xidong Zhang",
+            "Yichi Zhang",
+            "Jiaxin Shi",
+            "Fucai Zhu",
+            "Siyu Zhu",
+            "Michael Yu Wang",
+            "Xiaojun Wu",
+            "Weihao Yuan"
+          ],
+          "primary_category": "cs.RO",
+          "categories": [
+            "cs.RO"
+          ],
+          "published": "2026-06-30T14:24:00+00:00",
+          "link": "https://arxiv.org/pdf/2606.31723v1",
+          "tags": [
+            "keyword:vlam",
+            "query:vlam"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "unifies tactile understanding and prediction in VLA models",
+          "llm_evidence_cn": "在VLA模型中统一触觉理解与预测",
+          "llm_evidence": "在VLA模型中统一触觉理解与预测",
+          "canonical_evidence": "在VLA模型中统一触觉理解与预测",
+          "llm_tldr_en": "UniTacVLA constructs a unified tactile latent space with joint diffusion for contact understanding and prediction.",
+          "llm_tldr_cn": "VLA模型在接触丰富灵巧操控中受限。本文提出统一触觉学习框架，构建统一触觉潜在空间并联合扩散，实现接触理解与未来接触预测，显著提升了灵巧操控的成功率。",
+          "llm_tldr": "VLA模型在接触丰富灵巧操控中受限。本文提出统一触觉学习框架，构建统一触觉潜在空间并联合扩散，实现接触理解与未来接触预测，显著提升了灵巧操控的成功率。",
+          "llm_tags": [
+            "query:vlam"
+          ],
+          "matched_query_tag": "query:vlam",
+          "matched_query_text": "VLA model",
+          "matched_requirement_id": "req-6",
+          "selection_source": "carryover_cache",
+          "paper_id": "2606.31723v1",
+          "carry_days": 1
+        }
+      ]
+    }
+  }
 }

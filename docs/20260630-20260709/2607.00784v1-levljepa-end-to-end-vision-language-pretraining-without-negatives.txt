@@ -1,0 +1,591 @@
+Title: LeVLJEPA: End-to-End Vision-Language Pretraining Without Negatives
+
+URL Source: https://arxiv.org/pdf/2607.00784v1
+
+Published Time: Thu, 02 Jul 2026 00:54:25 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+# LeVLJEPA: End-to-End Vision-Language Pretraining Without Negatives 
+
+Lukas Kuhn 1,2 Giuseppe Serra 1 Randall Balestriero *,4 Florian Buettner *,1,2,3 
+
+> 1
+
+German Cancer Research Center 2German Cancer Consortium 3Goethe University Frankfurt 4Brown University 
+
+> *
+
+Joint last author. Correspondence: lukas.kuhn@dkfz-heidelberg.de 
+
+ Website § Code Æ Checkpoints 
+
+Vision-language pretraining remains dominated by contrastive objectives, whereas vision-only self-supervised learning has largely adopted non-contrastive methods. At the same time, the role of vision-language encoders has shifted: they are increasingly deployed not as zero-shot classifiers but as the frozen visual backbone of vision-language models and dense prediction systems, which consume the full grid of patch tokens rather than a single pooled embedding. We introduce LeVLJEPA , the first fully non-contrastive end-to-end vision-language pretraining method. LeVLJEPA learns through cross-modal prediction with stop-gradient targets and per-modality distributional regularization, without negatives, temperature, momentum encoder, or teacher-student schedule, and trains stably at large scale. We find that the resulting encoder provides markedly stronger dense semantic features for downstream use: as a frozen vision-language-model backbone, LeVLJEPA is the strongest of the evaluated encoders across GQA, VQAv2, and POPE under two distinct language models, and outperforms contrastive baselines on semantic segmentation, while remaining on par on global readouts such as linear probing. These results establish non-contrastive pretraining as an effective means of producing dense semantic vision features. 
+
+## 1 Introduction 
+
+Self-supervised pretraining for vision has increasingly shifted toward non-contrastive objectives. Methods such as DINO [ 6], I-JEPA [ 1], and LeJEPA [ 3] learn strong visual representations without negative pairs, relying instead on predictive or distributional objectives. Vision-language pre-training has not followed the same trajectory: CLIP [ 24 ], SigLIP [ 28 ], and their extensions still use contrastive image-text alignment as the default objective for learning from paired image-caption data. This raises a basic question: can end-to-end vision-language pretraining work without contrastive negatives? This question has practical implications. Vision-language encoders are increasingly reused as visual backbones in systems where the quality of the image representation mat-ters directly, including visual instruction-tuned models such as LLaVA [ 20 ], dense prediction methods such as Dense-CLIP [ 25 ], and language-conditioned robotics systems such as CLIPort [ 26 ] and Voltron [ 18 ]. In many such settings the pretrained vision encoder serves as a frozen feature extractor, and the downstream system does not consume a single pooled image vector but attends over the full grid of patch tokens. What matters is therefore the quality of these dense, per-token visual features rather than zero-shot clas-sification alone. Yet contrastive vision-language objectives optimize primarily for cross-modal alignment of a single pooled embedding which is well suited to zero-shot retrieval and classification, but is supervising the per-token features only as a byproduct. We introduce LeVLJEPA , the first fully non-contrastive end-to-end vision-language pretraining method. LeVLJEPA learns image-text alignment through cross-modal prediction: image embeddings predict stop-gradient text embeddings, and text embeddings predict stop-gradient image embed-dings through modality-specific predictors. To prevent collapse, each modality is regularized independently with SIGReg [ 3 ], encouraging isotropic-Gaussian marginal em-bedding distributions. This gives a simple training recipe with no negatives, temperature parameter, momentum en-coder, or teacher-student schedule. We validate our method at two scales, training on CC12M (12M samples) [ 7] and on Datacomp-L (92M samples) [13 ]. At the smaller CC12M scale, LeVLJEPA is competitive with CLIP and SigLIP on both zero-shot transfer and lin-ear probing, establishing that the non-contrastive objective matches contrastive pretraining when the alignment signal is the primary axis of evaluation. At the larger Datacomp-L scale, contrastive objectives retain an advantage on zero-shot transfer, while LeVLJEPA remains on par with CLIP and SigLIP under linear probing of the global class repre-sentation and outperforms both on background robustness. The objectives diverge most strongly under evaluations that operate on the patch-token sequence rather than a pooled embedding. LeVLJEPA outperforms both contrastive base-lines on semantic segmentation, and when employed as the frozen visual backbone of a vision-language model—with only a lightweight bridge trained between the frozen en-coder and a frozen language model—it attains the highest downstream accuracy on GQA, VQAv2, and POPE, consis-tently across two distinct language-model families. These results indicate that the benefit of non-contrastive vision-language pretraining is concentrated in the quality of the dense, per-token features on which downstream systems operate, rather than in the global image-text alignment measured by zero-shot transfer. The contributions of this work are as follows: 
+
+> arXiv:2607.00784v1 [cs.CV] 1 Jul 2026
+
+LeVLJEPA 
+
+1: Intro | 2: Background | 3: Architecture | 4: Experiments | 5: Global Features | 6: Dense Features | 7: Discussion                  
+
+> Figure 1. LeVLJEPA overview. Image XVand text XTare encoded into embeddings ZV, Z T, which are then passed through modality-specific predictors to produce cross-modal predictions ˆZV,ˆZT. The training objective combines (i) a cross-modal MSE loss between each predictor’s output and the stop-gradient target from the other modality, and (ii) SIGReg [ 3] applied independently to
+> ZVand ZTto keep each modality’s marginal embedding distribution close to isotropic Gaussian. SIGReg (right) enforces this distribution by projecting embeddings onto random univariate directions and applying a characteristic-function-based normality test to each projection, avoiding the curse of dimensionality of direct density matching.
+
+• We introduce LeVLJEPA , the first fully non-contrastive end-to-end vision-language pretraining method. The objective combines cross-modal predic-tion with stop-gradient targets and per-modality dis-tributional regularization, and requires no negative pairs, temperature, momentum encoder, or teacher-student schedule, yielding a simple and stable training procedure. 
+
+• We establish that our method is competitive with con-trastive pretraining across two training scales. At smaller scale training it matches CLIP and SigLIP on both zero-shot transfer and linear probing, while at the scale of Datacomp-L it remains on par under linear probing and trails the contrastive baselines only on zero-shot transfer, the objective these methods opti-mize directly. 
+
+• We demonstrate that LeVLJEPA learns stronger dense semantic features for downstream use. Evaluated under protocols that operate on the patch-token sequence rather than a pooled embedding, it outperforms both contrastive baselines on semantic segmentation and, as the frozen visual backbone of a vision-language model, attains the highest accuracy on GQA, VQAv2, and POPE across two distinct language-model families. 
+
+## 2 Background 
+
+2.1 Notation and Setup 
+
+We consider a paired dataset D = {(xi, y i)}Ni=1 of im-ages xi ∈ X and captions yi ∈ Y . An image encoder 
+
+fθ : X → Rd maps images to embeddings zv = fθ (x), and a text encoder gϕ : Y → Rd maps captions to embeddings 
+
+zt = gϕ(y). A minibatch of size B yields embedding ma-trices Zv , Z t ∈ RB×d with rows zvi , z ti . For contrastive baselines and evaluation, embeddings are ℓ2-normalized before computing cosine similarities. For LeVLJEPA, the embeddings regularized by SIGReg are not ℓ2-normalized during training, since SIGReg targets an isotropic Gaussian marginal distribution in Rd. When cosine similarities are needed for zero-shot evaluation or retrieval, LeVLJEPA embeddings are normalized only at evaluation time. 
+
+2.2 Contrastive Vision-Language Pretraining 
+
+CLIP [ 24 ] trains fθ and gϕ jointly by pulling matched image-caption pairs together and pushing unmatched pairs apart, using a symmetric InfoNCE objective over the batch, 
+
+LInfoNCE = − 12B
+
+> B
+
+∑
+
+> i=1
+
+[
+
+log exp( zvi · zti /τ )
+
+∑Bj=1 exp( zvi · ztj /τ )+ log exp( zvi · zti /τ )
+
+∑Bj=1 exp( zvj · zti /τ )
+
+]
+
+,
+
+(1) where τ is a learned temperature. The softmax over the batch turns every other sample into a negative, so the qual-ity of the signal scales with B: larger batches provide harder and more diverse negatives, and CLIP-style methods are typically trained with batch sizes in the tens of thousands. SigLIP [ 28 ] replaces the softmax with an independent sigmoid classification over every pair (i, j ) in the batch, 
+
+LSigLIP = − 1
+
+B
+
+> B
+
+∑
+
+> i=1
+> B
+
+∑
+
+> j=1
+
+log σ(tij 
+
+(zvi · ztj + b)) , (2) where tij = +1 if i = j and −1 otherwise, and t, b are learnable scalars. Decoupling the pairs removes the global normalization and improves training stability at small and large batch sizes alike, though performance still benefits meaningfully from scaling B.VL-JEPA [ 8 ] recasts vision-language learning in the lan-guage of joint-embedding predictive architectures: rather than aligning two independently pooled embeddings, a pre-dictor maps the image to the continuous embedding of the target caption, which is learned in latent space instead of by autoregressive token generation. Despite this predic-tive, JEPA-style framing, the training signal is contrastive. VL-JEPA optimizes a bidirectional InfoNCE objective of 2LeVLJEPA 
+
+1: Intro | 2: Background | 3: Architecture | 4: Experiments | 5: Global Features | 6: Dense Features | 7: Discussion 
+
+the same form as CLIP between predicted and target em-beddings, which simultaneously aligns each predicted em-bedding with its matched target and, through the in-batch denominator, pushes it away from the other captions in the batch. Collapse is therefore prevented by negative pairs drawn from the batch rather than by an explicit distribu-tional regularizer, and VL-JEPA inherits the batch-level negative sampling and batch-size dependence of contrastive pretraining; we accordingly group it with the contrastive methods. Notably, Chen et al. [8] observe that the InfoNCE term could in principle be replaced by a sample-independent anti-collapse regularizer but leave this to future work. 
+
+2.3 Non-Contrastive Self-Supervised Learning 
+
+In vision-only pretraining, non-contrastive methods have be-come the dominant paradigm. SimCLR [ 9] remains a canon-ical contrastive baseline, DINO [ 6] learns without negatives via self-distillation between student and teacher networks, and I-JEPA [ 1 ] predicts the representations of masked image regions from visible ones in latent space, avoiding both neg-atives and pixel-level reconstruction. BYOL [ 15 ] prevents collapse without negatives through architectural asymme-try: an online network equipped with a prediction head regresses the representation produced by a momentum-averaged target network, with a stop-gradient applied to the target. This asymmetric predictor-plus-stop-gradient design, which later was simplified by SimSiam [ 10 ]—which shows the momentum encoder is not required—is the mech-anism we adapt to the cross-modal setting (Section 3), and it is complementary to the distributional regularizer of LeJEPA. LeJEPA [ 3] provides a simple and theoretically grounded alternative within the JEPA family by replacing such mech-anisms with an explicit distributional regularizer. The central result is that isotropic Gaussian embeddings min-imize downstream risk, and SIGReg (Sketched Isotropic Gaussian Regularization) is the objective that enforces this distribution in a scalable way. Rather than matching densi-ties directly in d dimensions, SIGReg projects the embed-dings onto a set of random 1D directions A and applies a characteristic-function-based statistical test (Epps–Pulley) to each projection, yielding an objective with linear time and memory complexity in both batch size and embedding dimension. Given a batch of B samples with V augmented views per sample ( Vg global views and Vl local views), let zn,v ∈ Rd
+
+denote the embedding of view v of sample n. LeJEPA combines SIGReg, applied per-view and averaged across the V views, with a view-prediction loss averaged across the B samples in the batch: 
+
+LLeJEPA = λV
+
+> V
+
+∑
+
+> v=1
+
+SIGReg ({zn,v }Bn=1 
+
+)
+
++ 1 − λB
+
+> B
+
+∑
+
+> n=1
+
+L(Vg )
+
+> pred
+
+({zn,v }Vv=1 
+
+) ,
+
+(3) with a single trade-off hyperparameter λ ∈ [0 , 1] . The prediction term draws views closer in latent space while SI-GReg keeps the embedding distribution isotropic Gaussian, and together they are sufficient to prevent collapse with-out stop-gradients, momentum encoders, or teacher-student architectures. We build directly on LeJEPA and reuse its view structure and prediction-plus-SIGReg formulation as the non-contrastive component of our method. 
+
+## 3 Learning Image-Text Alignment Without Negatives 
+
+We investigate whether non-contrastive objectives, of the kind that have replaced contrastive learning in vision-only self-supervised pretraining, can be applied to the vision-language setting. We adopt the LeJEPA framework [ 3 ]as a representative instance: it provides a simple, theo-retically grounded non-contrastive objective and serves as our starting point for cross-modal extension. Concretely, given a paired batch {(xi, y i)}Bi=1 with image embeddings 
+
+zvi = fθ (xi) and text embeddings zti = gϕ(yi), we want an objective that (i) aligns the two modalities, (ii) regularizes each embedding distribution to be isotropic Gaussian via SIGReg, and (iii) uses no negatives. An overview of the resulting architecture is shown in Figure 1. 
+
+3.1 Direct Alignment Collapses 
+
+A direct adaptation of LeJEPA’s view-prediction objective to the cross-modal setting replaces CLIP’s contrastive term with a latent-space regression between matched image-text pairs, 
+
+Ldirect = 1
+
+B
+
+> B
+
+∑
+
+> i=1
+
+∥zvi − zti ∥22
+
++ λv SIGReg (Zv ) + λt SIGReg (Zt),
+
+(4) trained jointly over both encoders. This symmetric ob-jective is insufficient in practice. Without SIGReg, direct MSE collapses almost completely: the effective rank of Zv
+
+and Zt drops rapidly during training and the two distri-butions converge onto a shared low-dimensional subspace. Adding per-modality SIGReg improves the effective rank of both embeddings, but still yields poor zero-shot and linear-probing performance (Appendix D). Thus, marginal regularization alone does not resolve the degeneracy intro-duced by symmetric cross-modal regression. The cause is the symmetry of the regression term. Gradi-ents flow into both encoders from the same target ∥zvi −zti ∥22,so the objective encourages both embeddings to meet in a shared space determined by the information common to image and text. Since captions describe images at a coarse level of detail, this shared signal under-specifies fine visual structure. Although SIGReg can pull each marginal dis-tribution toward an isotropic Gaussian and improve rank, the symmetric cross-modal term still couples the two en-coders too strongly and does not recover useful cross-modal geometry. 
+
+3.2 Cross-Modal Prediction with Stop-Gradient 
+
+This suggests that stable non-contrastive cross-modal align-ment requires an asymmetric objective. Instead of regress-ing one embedding against the other directly, we intro-duce a cross-modal predictor on each side: a small MLP 3LeVLJEPA 
+
+1: Intro | 2: Background | 3: Architecture | 4: Experiments | 5: Global Features | 6: Dense Features | 7: Discussion 
+
+hv : Rd → Rd that predicts the text embedding from the image embedding, and a mirror predictor ht that predicts the image embedding from the text embedding. Crucially, the prediction targets are detached: gradients flow only through the predictor and its own encoder, not back into the encoder producing the target. The cross-modal loss is 
+
+Lcross = 1
+
+B
+
+> B
+
+∑
+
+> i=1
+
+[
+
+∥hv (zvi ) − sg (zti )∥22
+
++ ∥ht(zti ) − sg (zvi )∥22
+
+]
+
+,
+
+(5) where sg (·) denotes stop-gradient. This asymmetry is the central design choice: with stopped targets, each encoder’s gradients come only from its own branch, so SIGReg can shape each modality’s embedding distribution without com-petition from a symmetric cross-modal term. The predictors 
+
+hv , h t absorb the residual asymmetry between image and caption content rather than forcing it into the encoders themselves, similar to the predictor design in SimSiam [ 10 ]and BYOL [15] for vision-only SSL. 
+
+Architecture. Both encoders follow the standard CLIP setup: a ViT [ 12 ] image encoder producing a CLS token embedding, and a GPT-2 [ 23 ] text encoder using the final-token hidden state. Each backbone output is passed through a one-layer MLP projection (hidden dimension 2048, GELU, BatchNorm, Dropout) that maps to the shared embedding space of dimension d, where we calculate the SIGReg loss. This projection is necessary because both the final ViT layer and the final GPT-2 layer apply a Layer Normaliza-tion [ 2] which prevents the SIGReg anti-collapse objective from being optimized effectively [ 21 ]. The cross-modal predictors hv , h t are separate MLPs operating on top of these embeddings, so the target embeddings (used with stop-gradient) are exactly the same representations that SIGReg regularizes (see Appendix A for details). 
+
+Objective. The full LeVLJEPA objective combines cross-modal prediction with SIGReg on each modality, 
+
+LLeVLJEPA = (1 − λv − λt) Lcross 
+
++ λv SIGReg (Zv ) + λt SIGReg (Zt), (6) with a single degree of freedom per modality ( λv , λ t ∈ [0 , 1] ). Unlike contrastive or teacher-student objectives, LeVLJEPA does not introduce negative-pair sampling, temperature scaling, momentum-averaged encoders, or auxiliary teacher networks. The method is trained with a standard forward-backward pass and is compatible with distributed data parallelism. 
+
+3.3 Batch Size Invariance 
+
+Contrastive objectives draw their negative signal from the batch, so their performance depends on the batch size B;CLIP-style methods accordingly improve as B grows [ 24 , 28 ]. LeVLJEPA has no batch-level term: cross-modal predic-tion is computed per sample, and SIGReg acts on the empirical marginal of the embedding distribution, converg-ing to the same population objective regardless of B. We confirm this on CC12M across B ∈ { 1024 , 2048 , 4096 } at matched compute, where LeVLJEPA’s ImageNet zero-shot and linear-probing accuracy stay within noise while CLIP improves with B. Non-contrastive cross-modal pretrain-ing is therefore largely insensitive to batch size, removing a constraint that ties contrastive performance to training infrastructure. 
+
+## 4 Experimental Setup 
+
+Two-stage protocol. We separate method development from final evaluation to prevent overfitting our design choices to the regime on which we report results. Hyperpa-rameter selection and all objective ablations are conducted on CC12M, whose moderate scale permits sweeping the predictor depth and width, the SIGReg trade-off weights λv
+
+and λt, and the learning rate across a large number of con-figurations at tractable cost; these studies are reported in Appendix F. The configuration selected on CC12M is then held fixed and evaluated at the scale of Datacomp-L, where all results in the main paper are obtained. No additional method-specific tuning is performed at the Datacomp-L scale, ensuring that the large-scale results reflect a sin-gle transferred configuration rather than a configuration optimized on the evaluation regime itself. 
+
+Baselines. For the contrastive baselines we use the In-foNCE and SigLIP objectives with the well-tested Open-CLIP [17] training hyperparameters, which are widely val-idated for CLIP-style training at this scale, rather than tuning them ourselves. This ensures the contrastive base-lines are configured as a practitioner would deploy them and that any gap is not an artifact of under-tuned base-lines. All methods share the same ViT-B/16 vision encoder, the same data, the same number of samples seen, and the same evaluation protocols; LeVLJEPA and the contrastive baselines differ only in the pretraining objective. 
+
+Scale. All Datacomp-L runs are trained for a total of 
+
+819 M samples seen. We adopt this samples-seen budget, rather than a fixed number of epochs, as the axis along which all methods are matched, so that total compute is held constant across objectives independently of the ef-fective dataset size each method traverses. Datacomp-L is distributed as a list of image URLs, and a fraction of these are no longer retrievable due to link rot: of the ap-proximately 140 M image-text pairs in the original release, roughly 92 M remained downloadable at the time of our experiments, and all methods are therefore trained on this reduced ∼ 92 M-sample pool. This bears on cross-paper comparison. Earlier results on Datacomp-L were obtained from substantially larger downloadable fractions, so our absolute numbers are not directly comparable to those re-ported elsewhere and are expected to be lower. Because link rot affects all methods identically, the comparisons drawn in this paper remain controlled: every encoder is trained on the same surviving pool under the same samples-seen budget. 4LeVLJEPA 
+
+1: Intro | 2: Background | 3: Architecture | 4: Experiments | 5: Global Features | 6: Dense Features | 7: Discussion 
+
+Training dynamics and ablations. Under this protocol LeVLJEPA trains stably from initialization: the effective rank of both Zv and Zt rises steadily throughout train-ing until saturation, the SIGReg terms converge to small values consistent with isotropic Gaussian marginals, and the cross-modal loss decreases monotonically. Training is also robust to architectural and optimization choices, with final performance largely insensitive to predictor depth and width and to the trade-off weights λv , λ t across a wide range (Appendix F, A). Objective ablations on CC12M (Appendix D) confirm that each component is necessary: direct symmetric MSE collapses, SIGReg alone does not prevent that collapse, predictors without SIGReg are un-stable or underperform, and only the full objective is both stable and performant. 
+
+## 5 Global Representation Quality 
+
+We first evaluate the encoders under the two standard proto-cols for vision-language representations: zero-shot transfer and linear probing. Each protocol reduces an image to a single pooled vector prior to scoring—zero-shot transfer compares the pooled image embedding to a text embedding, whereas linear probing classifies the pooled image embed-ding directly—and both therefore characterize the global representation rather than the per-token features. The two protocols yield distinct conclusions. On zero-shot transfer, the contrastive baselines hold an advantage at the scale of Datacomp-L, consistent with this protocol measuring precisely the image-text alignment they optimize directly. Under linear probing, by contrast, the objectives are on par at both the CC12M and Datacomp-L scales: removing the dependence on cross-modal alignment eliminates the zero-shot gap and leaves the global visual features of all three methods equally discriminative. These protocols thus estab-lish parity in global representation quality while attributing the zero-shot gap to alignment rather than to feature quality. In the following subsections we report detailed results for both protocols across multiple classification benchmarks. 
+
+5.1 Zero-Shot Alignment Without Negatives 
+
+Although LeVLJEPA receives no negative-pair signal, cross-modal prediction still induces nontrivial zero-shot alignment. Table 1 reports zero-shot accuracy on Datacomp-L across four classification benchmarks. LeVLJEPA produces mean-ingful predictions across all four, confirming that matched-pair prediction with marginal regularization is sufficient to learn an image-text correspondence usable for classification. It does, however, trail CLIP and SigLIP. This is expected as zero-shot classification scores matched against unmatched image-text pairs, which corresponds directly to the objective contrastive methods optimize. In contrast, LeVLJEPA is trained only through matched-pair prediction and never sees the discriminative signal this protocol rewards. We therefore do not present zero-shot as a setting where the non-contrastive objective is competitive, but as evidence that alignment emerges without negatives. The magnitude of this gap is scale-dependent. On CC12M, trained at a batch size of 2048 , all three objec-tives are nearly on par on zero-shot transfer, with LeVL-                  
+
+> Table 1. Zero-shot classification accuracy (%) on Datacomp-L with an identical ViT-B/16 backbone. LeVLJEPA learns nontrivial alignment without negatives but trails the contrastive baselines, which optimize the matched-vs-unmatched objective that zero-shot directly measures. LeVLJEPA uses the text-to-image prediction direction.
+> Method ImageNet Places365 Aircraft Pets
+> InfoNCE 47.32 34.46 8.10 68.98 SigLIP 50.78 33.76 10.62 77.27
+> LeVLJEPA 42.45 29.97 7.65 59.63
+
+JEPA exceeding CLIP on the majority of benchmarks (Ap-pendix E). The contrastive advantage that is evident at the scale of Datacomp-L is therefore substantially reduced in this regime, consistent with the dependence of contrastive training on large batches: at the moderate batch size used here, the negative signal that drives zero-shot alignment is weaker, and the gap between the objectives narrows accordingly. 
+
+5.2 Global-Feature Linear Probing 
+
+A linear probe on the frozen CLS token isolates the quality of the global image feature from cross-modal alignment: it discards the text encoder and asks only whether the pooled visual embedding is linearly separable by class. Ta-ble 2 reports linear-probing accuracy on Datacomp-L. Here the three objectives track closely. LeVLJEPA stays within about 1.5 points of the strongest baseline on every bench-mark and exceeds InfoNCE on Aircraft, with no method dominating across datasets. Removing the dependence on image-text alignment is thus enough to erase the zero-shot gap of Table 1: the global visual feature LeVLJEPA learns is as discriminative as those of CLIP and SigLIP.                  
+
+> Table 2. Linear probing accuracy (%) on frozen CLS features, Datacomp-L with an identical ViT-B/16 backbone. On this global-feature readout the three objectives are on par, in con-trast to the zero-shot gap in Table 1.
+> Method ImageNet Places365 Aircraft Pets
+> InfoNCE 65.75 37.11 44.10 82.86
+> SigLIP 66.34 36.81 47.46 82.64 LeVLJEPA 65.42 36.07 46.38 81.28
+
+This parity is consistent across training scale. On CC12M the three objectives are likewise equivalent under ImageNet linear probing, with LeVLJEPA reaching 31 .84% Top-1, against 31 .91% for CLIP and 31 .83% for SigLIP. 
+
+5.3 Background Robustness 
+
+IID linear probing measures whether global features are class-discriminative, but not whether they rely on the object itself or on correlated background context. We therefore evaluate background robustness on the ImageNet-9 back-grounds challenge [ 27 ]. A linear classifier is trained on frozen CLS features from the Original training split and evaluated without retraining on two controlled variants: 
+
+Mixed-Same , where the foreground is composited onto a 5LeVLJEPA 
+
+1: Intro | 2: Background | 3: Architecture | 4: Experiments | 5: Global Features | 6: Dense Features | 7: Discussion 
+
+background from the same class, and Mixed-Rand , where the background is drawn from a randomly selected class. A large accuracy drop under these shifts indicates sensitivity to background cues.                
+
+> Table 3. ImageNet-9 background robustness. A linear clas-sifier is trained on frozen CLS features from Original images and evaluated without retraining on background-shifted vari-ants. All encoders use the same ViT-B/16 backbone and are pretrained on Datacomp-L.
+> Method Original Mixed-Same Mixed-Rand
+> InfoNCE 95.98 89.41 77.31 SigLIP 96.44 89.41 78.35 LeVLJEPA 96.96 91.01 79.75
+
+Table 3 shows that LeVLJEPA attains the highest accu-racy in all three settings and exhibits the smallest observed degradation under both background shifts. From Original to Mixed-Same, its accuracy drops by 5.95 points, com-pared with 6.57 for InfoNCE and 7.03 for SigLIP. Under the stronger Mixed-Rand shift, LeVLJEPA drops by 17 .21 
+
+points, versus 18 .67 and 18 .09 points, respectively. Thus, although the methods are closely matched on standard IID linear probing, LeVLJEPA’s global represen-tation is less sensitive to changes in background context. This is consistent with a more object-focused representation. Both readouts considered so far reduce the image to a single vector—zero-shot compares it to a caption embedding, linear probing classifies it directly. Modern uses of vision-language encoders, however, do not pool the image at all. In visual instruction tuning, dense prediction, and language-conditioned control, the downstream model attends over the full grid of patch tokens, and its performance is bounded by the semantic quality of those per-token features. In the next section we evaluate encoders on exactly this property—the dense token features their downstream use depends on. 
+
+## 6 Non-Contrastive Pretraining Yields Stronger Dense Features 
+
+A frozen ViT-B/16 emits a sequence of 196 patch tokens per image, and it is this sequence, rather than the pooled CLS embedding, that downstream systems consume—a segmentation head classifying each spatial location, or a language model cross-attending to the visual tokens during instruction tuning. The semantic and spatial structure of these tokens is therefore the representational property on which the downstream use of vision-language encoders depends, and it is not constrained by the contrastive image-text objective, which supervises only the pooled embedding. We assess this property in two stages, in both of which the encoder is held frozen and only a lightweight task head or bridge is trained, so that every difference is attributable to the pretrained representation rather than to downstream adaptation. We first evaluate dense prediction through semantic segmentation, which reads the patch grid with a minimal task head and measures the spatial and seman-tic structure of the token features directly (Section 6.1). We then evaluate the setting these encoders are increas-ingly deployed in: serving as the frozen visual backbone of a vision-language model, where the patch tokens are consumed by a language model in place of a task head (Section 6.2). 
+
+6.1 Semantic Segmentation 
+
+A frozen backbone evaluated through a minimal task head is a direct readout of representation quality: with the encoder held fixed and only a linear head trained on top, accuracy on a dense task is bounded by the spatial and semantic structure already present in the patch tokens. We apply this protocol to semantic segmentation, training a single linear layer on the frozen patch tokens to predict a class label at each location of the 14 × 14 grid, with the same ViT-B/16 backbone across all methods. We report mean intersection-over-union on ADE20K [30] and COCO-Stuff [5].          
+
+> Table 4. Linear semantic segmentation (mIoU, %) on frozen patch tokens, Datacomp-L with an identical ViT-B/16 back-bone. A single linear head is trained per method.
+> Method ADE20K COCO-Stuff
+> InfoNCE 20.90 29.02 SigLIP 19.24 28.88 LeVLJEPA 23.15 31.10
+
+Table 4 shows a consistent advantage for LeVLJEPA, which exceeds the stronger contrastive baseline by 2.25 
+
+mIoU on ADE20K and by 2.08 mIoU on COCO-Stuff. This margin is substantially larger than the differences observed on the global readouts of Section 5, and its direction is preserved across two segmentation benchmarks of differing label granularity. Because the task head is a single linear layer, the difference cannot be attributed to head capacity and instead reflects the linear predictability of semantic class from the patch tokens at each spatial location. The contrastive objective supervises only the pooled image-text similarity and shapes the per-token features as a byproduct, which is consistent with the weaker per-location structure observed here. 
+
+6.2 Visual Question Answering with a Frozen Backbone 
+
+A principal contemporary use of a vision-language encoder is as the frozen visual front-end of a vision-language model, in which the patch tokens are projected into a language model’s embedding space and consumed by the language model during multimodal instruction following. We evaluate each pretrained encoder in this role under a strict frozen-transfer protocol: both the ViT-B/16 vision encoder and the language model are held frozen, and only a lightweight MLP bridge mapping the patch tokens into the language-model input space is trained on the corresponding train split of each dataset. As neither the encoder nor the language model is updated, downstream accuracy is a function of the pretrained visual features and the bridge alone, isolating the contribution of the encoder in the same manner as the 6LeVLJEPA 
+
+1: Intro | 2: Background | 3: Architecture | 4: Experiments | 5: Global Features | 6: Dense Features | 7: Discussion 
+
+frozen heads of Section 6.1. To distinguish properties of the visual features from those of a particular language model, we repeat the full evaluation with two distinct frozen language models, Llama-1B and Qwen-1.5B, and report accuracy on GQA [ 16 ], VQAv2 [ 14 ], and POPE [ 19 ]. A randomly initialized encoder is included as a floor quantifying the accuracy attainable from the bridge alone. Results are re-ported in Table 6; LeVLJEPA attains the highest accuracy in every benchmark–language-model combination, and all pretrained encoders exceed the random floor by a wide mar-gin, confirming that the bridge reads pretrained structure rather than learning the task itself. 
+
+Compositional question answering (GQA). GQA evaluates compositional reasoning over object attributes, spatial relations, and their conjunctions, and therefore de-pends on spatially localized visual information rather than a global image descriptor. LeVLJEPA is the strongest backbone under both language models, exceeding the best contrastive baseline by 1.9 points with Llama-1B and 1.5
+
+points with Qwen-1.5B. That the advantage on a relational task is realized through a frozen bridge is consistent with the per-location structure observed under semantic segmen-tation: the spatial information GQA requires is present in the patch tokens prior to any downstream training. 
+
+General visual question answering (VQAv2). 
+
+VQAv2 measures open-ended visual question answering across a broad range of object, attribute, and scene queries. The margin in favor of LeVLJEPA is largest on this bench-mark, at 2.6 points with Llama-1B and 4.8 points with Qwen-1.5B over the strongest contrastive backbone. The contrastive baselines also diverge from each other here— InfoNCE exceeds SigLIP under both language models de-spite their proximity on the global readouts of Section 5— indicating that the global-feature parity established earlier does not extend to the patch-level features this task con-sumes. 
+
+Object hallucination (POPE). POPE evaluates ob-ject hallucination through balanced yes/no questions on object presence, on which a backbone that induces a default “yes” response inflates recall while hallucinating absent ob-jects; we therefore report accuracy together with F1 and the fraction of “yes” responses in Table 5. LeVLJEPA at-tains the highest accuracy under both language models and the highest F1 under Qwen-1.5B, and produces the most balanced answer distribution, with a yes-rate nearest the calibrated 50% , whereas the contrastive backbones and the random floor are skewed toward “yes.” Under Llama-1B its F1 falls below the contrastive baselines despite its higher ac-curacy; this reflects a lower yes-rate, which trades recall on present objects for fewer false positives, rather than weaker hallucination behavior. Across both language models, the LeVLJEPA backbone yields the most accurate and least answer-biased model on this benchmark. 
+
+Consistency across language models. The ordering of the three pretrained encoders is identical under both 
+
+Table 5. POPE object-hallucination results with frozen en-coders and frozen LLMs. Accuracy and F1 are higher-is-better. Bias is the absolute deviation of the yes-rate from the balanced 
+
+50% , |yes-rate − 50 |, for which lower is better. Subscripts are standard deviations over three seeds. 
+
+Backbone Acc F1 Bias ↓
+
+Llama-1B 
+
+Random 49 .6±1.3 59 .3±1.2 23 .8±6.2
+
+InfoNCE 65 .8±2.4 69 .4±2.4 11 .6±3.1
+
+SigLIP 62 .0±1.5 68 .3±1.6 19 .7±1.8
+
+LeVLJEPA 66 .9±2.6 66 .6±1.7 1.2±1.6
+
+Qwen-1.5B 
+
+Random 52 .4±0.7 63 .8±2.4 31 .8±6.8
+
+InfoNCE 71 .5±0.4 73 .1±1.5 5.8±4.6
+
+SigLIP 70 .4±1.7 72 .7±1.6 8.4±6.5
+
+LeVLJEPA 75 .0±1.2 75 .8±0.9 3.0±1.0
+
+language models—LeVLJEPA, then InfoNCE, then SigLIP. As Llama-1B and Qwen-1.5B differ in tokenizer, pretraining corpus, and architecture, an ordering preserved across the substitution reflects a property of the visual features rather than an interaction with a specific language model. This comparison further dissociates backbone quality from zero-shot alignment: SigLIP is the strongest zero-shot model in Table 1 yet the weakest of the three backbones, whereas LeVLJEPA is the weakest zero-shot model yet the strongest backbone. On these encoders, zero-shot accuracy is thus not merely uninformative of backbone quality but inversely related to it, providing direct evidence for the central claim of this work: the representational property that yields a strong vision-language classifier is distinct from the one that yields a strong visual feature encoder. These results extend the dense-prediction findings to the deployment setting. The advantage observed as stronger per-location semantic structure under semantic segmenta-tion manifests, when the encoder serves as a frozen visual front-end, as a more accurate and better-calibrated vision-language model, across two language models and three benchmarks and without updating either the encoder or the language model. Non-contrastive vision-language pre-training thus yields the dense semantic features on which downstream language-model use depends. 
+
+## 7 Discussion 
+
+LeVLJEPA demonstrates that end-to-end vision-language pretraining can be performed without contrastive nega-tives. Using only matched-pair cross-modal prediction with stop-gradient targets and per-modality distributional regularization and no negatives, temperature, momentum encoder, or teacher-student schedule, it trains stably at the scale of Datacomp-L and learns representations that match contrastive pretraining on global-feature readouts. Negative-pair discrimination can therefore bee seen as only one route to useful vision-language representations rather than a precondition for them. The central finding of this work is that non-contrastive, JEPA-style vision-language pretraining yields a vision en-7LeVLJEPA 
+
+1: Intro | 2: Background | 3: Architecture | 4: Experiments | 5: Global Features | 6: Dense Features | 7: Discussion 
+
+Table 6. Frozen VLM-backbone accuracy (%) on GQA, VQAv2, and POPE, with two frozen language models. Both the ViT-B/16 vision encoder and the LLM are frozen; only an MLP bridge is trained. All encoders are pretrained on Datacomp-L. Subscripts are standard deviations over three bridge-training seeds. LeVLJEPA is the strongest backbone in every column. 
+
+Llama-1B Qwen-1.5B Backbone GQA VQAv2 POPE GQA VQAv2 POPE Random 36 .4±0.6 43 .2±0.1 49 .6±1.3 37 .0±0.7 43 .6±0.4 52 .4±0.7
+
+InfoNCE 42 .7±0.4 51 .6±0.4 65 .8±2.4 42 .2±0.9 49 .4±0.4 71 .5±0.4
+
+SigLIP 42 .4±0.3 49 .2±0.2 62 .0±1.5 41 .6±0.3 47 .7±0.6 70 .4±1.7
+
+LeVLJEPA 44 .6±0.2 54 .2±1.4 66 .9±2.6 43 .7±0.2 54 .1±0.7 75 .0±1.2
+
+coder with markedly stronger dense semantic features than contrastive pretraining. As the frozen backbone of a vision-language model, LeVLJEPA is the strongest of the eval-uated encoders across GQA, VQAv2, and POPE under two distinct language models, and it outperforms both contrastive baselines on semantic segmentation. This ad-vantage is specific to evaluations that consume the full patch-token sequence: under zero-shot transfer and linear probing, both of which reduce an image to a single pooled vector, the three objectives are difficult to separate, with the contrastive baselines retaining an advantage only on the zero-shot alignment they optimize directly. The standard evaluation protocols therefore do not measure the prop-erty on which these encoders are now deployed, and the divergence between objectives is visible only at the token level. These results motivate a vision-centric formulation of vision-language pretraining. Rather than optimizing the global image-text alignment rewarded by classification met-rics, the objective is to extract as much usable structure as possible from both modalities and to produce a vision encoder whose dense per-token features serve the systems that now consume them—visual instruction tuning, dense prediction, and language-conditioned control, none of which read the pooled embedding. The non-contrastive predictive objective is suited to this formulation: by supervising each modality through prediction and regularizing each marginal toward isotropy, rather than collapsing the image to a sin-gle vector matched against a caption, it preserves stronger semantic structure in the patch tokens that downstream models attend over. The background-robustness results are consistent with this account: even under a global readout, LeVLJEPA’s representation is less sensitive to background substitution than the contrastive baselines, indicating a more object-centric representation of the kind that dense, language-grounded use depends on. Several questions remain open. The contrastive objec-tives retain a stronger mechanism for zero-shot image-text alignment, and we do not close this gap; whether the dense-feature advantage of non-contrastive pretraining can be combined with competitive alignment within a single objec-tive is a natural direction for future work. Our experiments are conducted with a ViT-B/16 backbone, and while LeVL-JEPA trains stably and remains competitive at the scale of Datacomp-L, establishing that these advantages persist at larger model and data scales remains important to verify. More broadly, these results indicate that as vision-language encoders are increasingly deployed as the visual front-end of language models, the objectives and evaluation protocols used to train and compare them should be reconsidered around the dense token features on which these systems rely. 
+
+Acknowledgments We gratefully acknowledge support from the hessian.AI Service Center (funded by the Federal Ministry of Research, Technology and Space, BMFTR, grant no. 16IS22091) and the hessian.AI Innovation Lab (funded by the Hessian Ministry for Digital Strategy and Innovation, grant no. S-DIW04/0013/003). This work was co-funded by the European Union (ERC, TAIPO, 101088594 to F.B.) grant. Views and opinions ex-pressed are those of the authors only and do not necessarily reflect those of the European Union or ERC. Neither the European Union nor the granting authority can be held responsible for them. 8LeVLJEPA  
+
+> 1: Intro | 2: Background | 3: Architecture | 4: Experiments | 5: Global Features | 6: Dense Features | 7: Discussion
+
+## References 
+
+[1] Mahmoud Assran, Quentin Duval, Ishan Misra, Piotr Bojanowski, Pascal Vincent, Michael Rabbat, Yann LeCun, and Nicolas Ballas. Self-supervised learning from images with a joint-embedding predictive architec-ture. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 15619– 15629, 2023. [2] Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E. Hinton. Layer normalization, 2016. URL https:// arxiv.org/abs/1607.06450 .[3] Randall Balestriero and Yann LeCun. Lejepa: Prov-able and scalable self-supervised learning without the heuristics. arXiv preprint arXiv:2511.08544 , 2025. [4] Randall Balestriero, Hugues Van Assel, Sami BuGhanem, and Lucas Maes. stable-pretraining-v1: Foundation model research made simple. arXiv preprint arXiv:2511.19484 , 2025. [5] Holger Caesar, Jasper Uijlings, and Vittorio Ferrari. Coco-stuff: Thing and stuff classes in context. In 
+
+Proceedings of the IEEE conference on computer vision and pattern recognition , pages 1209–1218, 2018. [6] Mathilde Caron, Hugo Touvron, Ishan Misra, Hervé Jégou, Julien Mairal, Piotr Bojanowski, and Armand Joulin. Emerging properties in self-supervised vision transformers. In Proceedings of the IEEE/CVF interna-tional conference on computer vision , pages 9650–9660, 2021. [7] Soravit Changpinyo, Piyush Sharma, Nan Ding, and Radu Soricut. Conceptual 12m: Pushing web-scale image-text pre-training to recognize long-tail visual concepts. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 3558– 3568, 2021. [8] Delong Chen, Mustafa Shukor, Theo Moutakanni, Willy Chung, Jade Yu, Tejaswi Kasarla, Yejin Bang, Allen Bolourchi, Yann LeCun, and Pascale Fung. Vl-jepa: Joint embedding predictive architecture for vision-language. arXiv preprint arXiv:2512.10942 ,2025. [9] Ting Chen, Simon Kornblith, Mohammad Norouzi, and Geoffrey Hinton. A simple framework for contrastive learning of visual representations, 2020. URL https: //arxiv.org/abs/2002.05709 .[10] Xinlei Chen and Kaiming He. Exploring simple siamese representation learning. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 15750–15758, 2021. [11] Jia Deng, Wei Dong, Richard Socher, Li-Jia Li, Kai Li, and Li Fei-Fei. Imagenet: A large-scale hierarchical image database. In 2009 IEEE conference on computer vision and pattern recognition , pages 248–255. Ieee, 2009. [12] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, et al. An image is worth 16x16 words: Transformers for image recognition at scale. arXiv preprint arXiv:2010.11929 , 2020. [13] Samir Yitzhak Gadre, Gabriel Ilharco, Alex Fang, Jonathan Hayase, Georgios Smyrnis, Thao Nguyen, Ryan Marten, Mitchell Wortsman, Dhruba Ghosh, Jieyu Zhang, et al. Datacomp: In search of the next generation of multimodal datasets. Advances in Neu-ral Information Processing Systems , 36:27092–27112, 2023. [14] Yash Goyal, Tejas Khot, Douglas Summers-Stay, Dhruv Batra, and Devi Parikh. Making the v in vqa matter: Elevating the role of image understanding in visual question answering. In Proceedings of the IEEE conference on computer vision and pattern recognition ,pages 6904–6913, 2017. [15] Jean-Bastien Grill, Florian Strub, Florent Altché, Corentin Tallec, Pierre Richemond, Elena Buchatskaya, Carl Doersch, Bernardo Avila Pires, Zhaohan Guo, Mo-hammad Gheshlaghi Azar, et al. Bootstrap your own latent-a new approach to self-supervised learning. Ad-vances in neural information processing systems , 33: 21271–21284, 2020. [16] Drew A Hudson and Christopher D Manning. Gqa: A new dataset for real-world visual reasoning and compositional question answering. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 6700–6709, 2019. [17] Gabriel Ilharco, Mitchell Wortsman, Ross Wightman, Cade Gordon, Nicholas Carlini, Rohan Taori, Achal Dave, Vaishaal Shankar, Hongseok Namkoong, John Miller, Hannaneh Hajishirzi, Ali Farhadi, and Ludwig Schmidt. Openclip, July 2021. URL https://doi.org/ 10.5281/zenodo.5143773 . If you use this software, please cite it as below. [18] Siddharth Karamcheti, Suraj Nair, Annie S Chen, Thomas Kollar, Chelsea Finn, Dorsa Sadigh, and Percy Liang. Language-driven representation learning for robotics. arXiv preprint arXiv:2302.12766 , 2023. [19] Yifan Li, Yifan Du, Kun Zhou, Jinpeng Wang, Xin Zhao, and Ji-Rong Wen. Evaluating object hallucina-tion in large vision-language models. In Proceedings of the 2023 conference on empirical methods in natural language processing , pages 292–305, 2023. [20] Haotian Liu, Chunyuan Li, Qingyang Wu, and Yong Jae Lee. Visual instruction tuning. Advances in neural information processing systems , 36:34892–34916, 2023. 9LeVLJEPA  
+
+> 1: Intro | 2: Background | 3: Architecture | 4: Experiments | 5: Global Features | 6: Dense Features | 7: Discussion
+
+[21] Lucas Maes, Quentin Le Lidec, Damien Scieur, Yann LeCun, and Randall Balestriero. Leworldmodel: Sta-ble end-to-end joint-embedding predictive architecture from pixels. arXiv preprint arXiv:2603.19312 , 2026. [22] S. Maji, J. Kannala, E. Rahtu, M. Blaschko, and A. Vedaldi. Fine-grained visual classification of aircraft. Technical report, 2013. [23] Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei, Ilya Sutskever, et al. Language models are unsupervised multitask learners. OpenAI blog , 1 (8):9, 2019. [24] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sas-try, Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual models from natural lan-guage supervision. In International conference on ma-chine learning , pages 8748–8763. PmLR, 2021. [25] Yongming Rao, Wenliang Zhao, Guangyi Chen, Yan-song Tang, Zheng Zhu, Guan Huang, Jie Zhou, and Jiwen Lu. Denseclip: Language-guided dense predic-tion with context-aware prompting. In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition , pages 18082–18091, 2022. [26] Mohit Shridhar, Lucas Manuelli, and Dieter Fox. Cli-port: What and where pathways for robotic manipula-tion. In Conference on robot learning , pages 894–906. PMLR, 2022. [27] Kai Xiao, Logan Engstrom, Andrew Ilyas, and Alek-sander Madry. Noise or signal: The role of image backgrounds in object recognition. arXiv preprint arXiv:2006.09994 , 2020. [28] Xiaohua Zhai, Basil Mustafa, Alexander Kolesnikov, and Lucas Beyer. Sigmoid loss for language image pre-training. In Proceedings of the IEEE/CVF inter-national conference on computer vision , pages 11975– 11986, 2023. [29] Bolei Zhou, Agata Lapedriza, Aditya Khosla, Aude Oliva, and Antonio Torralba. Places: A 10 million im-age database for scene recognition. IEEE transactions on pattern analysis and machine intelligence , 40(6): 1452–1464, 2017. [30] Bolei Zhou, Hang Zhao, Xavier Puig, Sanja Fidler, Adela Barriuso, and Antonio Torralba. Scene parsing through ade20k dataset. In Proceedings of the IEEE conference on computer vision and pattern recognition ,pages 633–641, 2017. 10 LeVLJEPA 
+
+> 1: Intro | 2: Background | 3: Architecture | 4: Experiments | 5: Global Features | 6: Dense Features | 7: Discussion
+
+## A Training Protocol and Hyperparameter Tuning 
+
+All methods are trained under a matched compute bud-get and a shared optimization schedule, so that reported differences reflect the pretraining objective rather than dif-ferences in training configuration. Each model uses the same ViT-B/16 backbone, the same global batch size, the same warmup, and the same cosine learning-rate decay schedule, and is evaluated under an identical protocol. Hyperparam-eter selection is performed on CC12M and the resulting configuration is transferred unchanged to the Datacomp-L runs on which the main results are reported. We are using stable-pretraining [4] throughout all experiments. 
+
+Optimization and hardware. Each model is trained on 16 GPUs with a per-rank batch size of 256 , for a global batch size of 4096 . Training uses a 1,000 -step warmup followed by cosine decay. Each run requires approximately 
+
+256 H100 GPU-hours. 
+
+Learning-rate tuning. The learning rate is tuned inde-pendently for each method over a small grid on CC12M, and the best-performing configuration under the shared schedule is retained. This allows each objective to operate at an appropriate step size while holding the data, back-bone, number of updates, warmup, and evaluation protocol fixed. At the Datacomp-L scale, the contrastive baselines instead use the InfoNCE and SigLIP objectives with the established OpenCLIP [ 17 ] hyperparameters, which are well validated for CLIP-style training at this scale, rather than a learning rate tuned by us; this ensures the contrastive baselines are configured as a practitioner would deploy them and that any observed gap is not an artifact of under-tuned baselines. 
+
+LeVLJEPA configuration. LeVLJEPA uses a learning rate of 4 × 10 −2, which we found stable across the batch sizes considered. The vision and text SIGReg weights are set to λv = λt = 0 .01 . The cross-modal predictor is a depth-4 MLP of width 2048 with BatchNorm and GELU, and applies 10% dropout to limit overfitting at scale. SI-GReg is computedwith cross-device gathering similar to the contrastive baselines. This protocol compares objectives under matched com-pute rather than maximizing absolute performance through method-specific scaling recipes. All reported differences should accordingly be interpreted as differences under the same data, backbone, number of updates, warmup, and evaluation setup, with the learning rate tuned per method. 
+
+## B Datasets 
+
+Pretraining. We pretrain on two image-text datasets. CC12M [ 7] contains approximately 12 M image-caption pairs and is used for hyperparameter selection, ablations, and small-scale validation. Datacomp-L [ 13 ] is used for the main results; of its ∼ 140 M originally released pairs, ∼ 92 Mremained downloadable at the time of our experiments due to link rot (Appendix A), and all models are trained on this surviving pool. 
+
+Classification (zero-shot and linear probing). We evaluate on ImageNet [ 11 ] ( 1000 classes), Places365 [ 29 ](scene recognition, 365 classes), FGVC-Aircraft [ 22 ] (fine-grained recognition, 100 classes), and Oxford-IIIT Pets [ ? ](37 classes). 
+
+Semantic segmentation. ADE20K [ 30 ] contains 20 ,210 
+
+training and 2,000 validation images across 150 semantic classes. COCO-Stuff [ 5 ] provides dense annotations over 
+
+171 classes. Both are evaluated with a linear head on frozen patch tokens at the 14 × 14 grid resolution. 
+
+Background robustness. ImageNet-9 [ 27 ] is a 9-superclass subset of ImageNet with controlled fore-ground/background recompositions. We use the Original ,
+
+Mixed-Same , and Mixed-Rand variants, training a linear classifier on Original and evaluating on all three. 
+
+Vision-language model evaluation. We evaluate the frozen-backbone VLMs on GQA [ 16 ] (compositional ques-tion answering), VQAv2 [ 14 ] (general visual question an-swering), and POPE [ 19 ] (object hallucination, balanced yes/no presence questions). 
+
+## C Evaluation Protocol 
+
+For linear probing we evaluate frozen ViT-B/16 vision fea-tures without the projection head. For each image we ex-tract the CLS token from the frozen vision encoder, yielding a 768 -dimensional feature vector, and apply ℓ2 normaliza-tion. Images are resized so that the shortest side is 256 ,center-cropped to 224 × 224 , and normalized with the Ima-geNet mean and standard deviation. 
+
+Linear probing. The linear probe is a single linear layer from the frozen feature dimension to the number of classes, without bias. Prior to fitting, features are standardized per dimension using the training-set mean and standard deviation, with standard deviations clamped at 10 −8, and the same statistics are applied to the test set. The probe is trained for 50 epochs with AdamW at learning rate 0.1,weight decay 10 −4, and batch size 4096 , with the training set reshuffled each epoch. 
+
+Zero-shot evaluation. For zero-shot classification we use the frozen image and text encoders without fitting any classifier. Unless stated otherwise, class names are embedded with the single prompt template 
+
+a photo of a {class} .
+
+Image embeddings are compared against text embeddings by cosine similarity, and the nearest text class is taken as the prediction. We apply this single-template protocol to all methods to keep the evaluation controlled and to avoid confounding objective-level differences with prompt engi-neering, prompt ensembling, or dataset-specific calibration. 11 LeVLJEPA 
+
+1: Intro | 2: Background | 3: Architecture | 4: Experiments | 5: Global Features | 6: Dense Features | 7: Discussion 
+
+These choices lower absolute zero-shot accuracy relative to fully tuned CLIP-style evaluations but yield a cleaner comparison between objectives. We therefore interpret the zero-shot results of Table 1 as a controlled comparison of training objectives rather than as an attempt to maximize absolute accuracy. 
+
+## D Objective Ablations 
+
+We ablate the components of LeVLJEPA to test which parts are necessary for stable non-contrastive vision-language pretraining. We compare four variants: direct latent MSE between matched image and text embeddings, direct MSE with per-modality SIGReg, cross-modal predictors with stop-gradient targets but without SIGReg, and the full LeVLJEPA objective. All ablations are run for 20 ,000 
+
+training steps under the same reduced experimental setting; absolute numbers are therefore not directly comparable to the main results. The results in Table 7 show that symmetric cross-modal regression is not sufficient. Direct MSE collapses almost completely, especially on the vision side, yielding effective rank 3 and near-random ImageNet performance. Adding SI-GReg increases the effective rank, but does not recover use-ful image-text alignment or transferable vision features, in-dicating that marginal regularization alone cannot overcome the degeneracy induced by symmetric regression. Introduc-ing predictors and stop-gradient targets improves zero-shot alignment substantially, but remains unstable and produces weak linear probing without SIGReg. The full LeVLJEPA objective combines both ingredients: the predictor/stop-gradient asymmetry stabilizes cross-modal alignment, while SIGReg preserves high-rank modality-specific representa-tions. This combination yields the highest effective ranks and the strongest zero-shot and linear probing performance among the ablated variants. 
+
+## E CC12M Global Representation Results 
+
+This appendix reports the full CC12M results summarized in Section 5. All models use an identical ViT-B/16 backbone and are trained on CC12M at a batch size of 2048 under the protocol of Appendix A. 
+
+Zero-shot transfer. Table 8 reports zero-shot accuracy across five classification benchmarks. At this scale the three objectives are nearly on par: LeVLJEPA exceeds CLIP on STL-10, ImageNet Top-1, CIFAR-100 Top-1, Places365, and SUN397, and matches SigLIP on SUN397 Top-1, while SigLIP retains an advantage on ImageNet and CIFAR-100. LeVLJEPA’s largest margins occur on scene classification, where it improves over CLIP by 4.6 Top-1 and 6.3 Top-5 on Places365 and by 2.8 Top-1 and 4.6 Top-5 on SUN397. The contrastive advantage observed on zero-shot transfer at the scale of Datacomp-L (Table 1) is thus substantially reduced in this regime, consistent with the batch-size dependence of contrastive training. 
+
+Linear probing. Under linear probing of the frozen CLS feature on ImageNet, the three objectives are indistinguish-able: LeVLJEPA reaches 31 .84% Top-1, against 31 .91% 
+
+for CLIP and 31 .83% for SigLIP. This matches the parity observed under linear probing at the scale of Datacomp-L (Table 2), indicating that the equivalence of the global visual features across objectives is not specific to scale. 
+
+## F Hyperparameter Sensitivity 
+
+We study LeVLJEPA’s sensitivity to two architectural and optimization choices: the depth of the cross-modal predictor and the SIGReg trade-off weight λv and λt. All experiments use the configuration described in the main paper except for the ablated dimension; numbers are ImageNet zero-shot and linear probing Top-1 at batch size 2048 on CC12M. 1 2 3 4   
+
+> Projector depth (# hidden layers)
+> 7%
+> 8%
+> 9%
+> 10%
+> 11%
+> 12%
+> 13%
+> 14%
+> Top-1 Accuracy (%)
+> Zero-Shot Top-1
+> 1234
+> Projector depth (# hidden layers)
+> 26%
+> 28%
+> 30%
+> 32%
+> 34%
+> Top-1 Accuracy (%)
+> Linear Probe Top-1
+
+Figure 2. Sensitivity to predictor depth. Zero-shot (left) and linear probing (right) Top-1 accuracy as a function of the number of hidden layers in the cross-modal predictor. 
+
+Predictor depth. Figure 2 sweeps the cross-modal pre-dictor’s depth from 1 to 4 hidden layers. A single hidden layer is insufficient. Zero-shot drops to 7.4% and linear probing to 26 .1% , both well below the configurations with more capacity. Beyond two layers, performance is stable and improves monotonically with depth, gaining 0.7 points on zero-shot and 1.9 points on linear probing between depths 
+
+2 and 4. The default configuration of 4 hidden layers used throughout the paper sits within the stable region. 0.001 0.005 0.02 0.04    
+
+> Lambda ( )
+> 0%
+> 2%
+> 4%
+> 6%
+> 8%
+> 10%
+> 12%
+> 14%
+> Top-1 Accuracy (%)
+> Zero-Shot Top-1
+> 0.001 0.005 0.02 0.04
+> Lambda ( )
+> 0%
+> 5%
+> 10%
+> 15%
+> 20%
+> 25%
+> 30%
+> 35%
+> Top-1 Accuracy (%)
+> Linear Probe Top-1
+
+Figure 3. Sensitivity to the SIGReg trade-off weight λ.
+
+Zero-shot (left) and linear probing (right) Top-1 accuracy as a function of λ on a log scale. 
+
+SIGReg weight. Figure 3 sweeps the SIGReg weights 
+
+λv and λt (tested symmetrically and denoted as λ) across two orders of magnitude. At λ = 0 .001 , SIGReg is too weak to enforce isotropy and training degenerates: zero-shot drops below 1% and linear probing to 3% . For λ ∈
+
+[0 .005 , 0.04] , performance is stable, with probing accuracy 12 LeVLJEPA 
+
+1: Intro | 2: Background | 3: Architecture | 4: Experiments | 5: Global Features | 6: Dense Features | 7: Discussion 
+
+Table 7. Objective ablation for LeVLJEPA after 20 ,000 training steps. We report whether SIGReg is used, effective rank of the text and vision embeddings, ImageNet zero-shot Top-1, and ImageNet linear probing Top-1. Direct symmetric alignment collapses. Adding SIGReg improves rank but remains insufficient without predictor/stop-gradient asymmetry. Predictors with stop-gradient improve zero-shot alignment but underperform without marginal regularization. The full LeVLJEPA objective is required for stable and performant non-contrastive vision-language pretraining. 
+
+Alignment Objective SIGReg Eff. rank Text Eff. rank Vision ImageNet ZS ImageNet LP 
+
+Direct MSE No 25 3 0.52 0.18 Direct MSE Yes 63 170 1.82 2.56 Predictor + stop-gradient No 27 161 9.40 14.36 Predictor + stop-gradient Yes 358 477 25.24 27.51 Table 8. Zero-shot classification accuracy (%) on CC12M at batch size 2048 with an identical ViT-B/16 backbone. At this scale the three objectives are nearly on par, with LeVLJEPA strongest on STL-10 and scene classification. 
+
+Method STL-10 ImageNet CIFAR-100 Places365 SUN397 
+
+Top-1 Top-1 Top-5 Top-1 Top-5 Top-1 Top-5 Top-1 Top-5 InfoNCE 68.05 12.39 28.55 9.77 30.74 15.68 38.78 22.43 49.36 SigLIP 68.33 14.05 31.28 13.77 36.06 18.40 43.45 25.27 54.78 
+
+LeVLJEPA 74.16 12.84 30.23 11.03 29.70 20.24 45.04 25.27 53.98 
+
+varying within a 4-point range and zero-shot within a 2-point range. LeVLJEPA does not require precise tuning of λ as long as SIGReg is given enough weight to actively shape the embedding distribution. Together, these ablations indicate that LeVLJEPA is robust to architectural and optimization choices once min-imum thresholds (two predictor layers and a sufficiently strong SIGReg term) are satisfied. 
+
+## G Scaling 
+
+G.1 Scaling Model Size Tiny Small Base   
+
+> Model Size
+> 2
+> 4
+> 6
+> 8
+> 10
+> 12
+> 14
+> ImageNet Top-1 Accuracy (%)
+> Zero-Shot Top-1
+> CLIP
+> LeVLJEPA
+> Tiny Small Base
+> Model Size
+> 22
+> 24
+> 26
+> 28
+> 30
+> 32
+> ImageNet Top-1 Accuracy (%)
+> Linear Probe Top-1
+> CLIP
+> LeVLJEPA
+
+Figure 4. Model size scaling on CC12M. LeVLJEPA vs. CLIP on ImageNet zero-shot (left) and linear probing (right) across three ViT backbone sizes: Tiny, Small, and Base. Both methods improve with model size, and LeVLJEPA remains competitive with CLIP across the full range. 
+
+Figure 4 reports ImageNet performance across three ViT backbone sizes (Tiny, Small, Base) under the same update budget. Both methods benefit from increased model ca-pacity. On zero-shot classification, LeVLJEPA outperforms CLIP at Tiny ( 4.90% vs. 2.26% ), is within 0.34 points at Small ( 9.95% vs. 10 .29% ), and slightly exceeds CLIP at Base ( 13 .49% vs. 12 .39% ). Linear probing shows the same competitive pattern: the two methods are essentially tied at Tiny ( 22 .13% vs. 22 .10% ), CLIP is ahead at Small ( 29 .37% 
+
+vs. 27 .43% ), and LeVLJEPA slightly exceeds CLIP at Base (32 .20% vs. 31 .89% ). These results suggest that the non-contrastive formulation scales with model capacity and is not restricted to a single backbone size. 
+
+G.2 Data Efficiency 25% 50% 75% 100%    
+
+> Training Data (%)
+> 5
+> 6
+> 7
+> 8
+> 9
+> 10
+> 11
+> 12
+> 13
+> Top-1 Accuracy (%)
+> Zero-Shot Top-1
+> CLIP (InfoNCE)
+> LeVLJEPA (SigReg)
+> 25% 50% 75% 100%
+> Training Data (%)
+> 18
+> 20
+> 22
+> 24
+> 26
+> 28
+> 30
+> 32
+> Top-1 Accuracy (%)
+> Linear Probe Top-1
+> CLIP (InfoNCE)
+> LeVLJEPA (SigReg)
+
+Figure 5. Data efficiency on CC12M. LeVLJEPA vs. CLIP (InfoNCE) on ImageNet zero-shot (left) and linear probing (right) when trained on 25% , 50% , 75% , and 100% of CC12M under the same update budget. Both methods improve steadily with more data and converge to nearly identical linear probing accuracy at the full dataset. 
+
+Figure 5 reports ImageNet zero-shot and linear probing accuracy when both methods are trained on subsets of CC12M under the same update budget. Both methods scale smoothly with dataset size. At smaller data fractions, CLIP holds a modest advantage: at 25% of CC12M, CLIP reaches 
+
+5.15% zero-shot and 18 .21% linear probing Top-1, compared to 4.78% and 17 .33% for LeVLJEPA; at 50% , CLIP reaches 
+
+9.86% zero-shot and 25 .62% linear probing, compared to 
+
+8.41% and 23 .57% for LeVLJEPA. The gap narrows as data increases. At 75% , LeVLJEPA slightly exceeds CLIP on zero-shot accuracy ( 10 .91% vs. 10 .46% ), while CLIP remains ahead on linear probing ( 29 .54% vs. 28 .53% ). At the full dataset, the methods are nearly tied on linear probing ( 32 .20% for CLIP vs. 32 .09% for LeVLJEPA), while 13 LeVLJEPA 
+
+> 1: Intro | 2: Background | 3: Architecture | 4: Experiments | 5: Global Features | 6: Dense Features | 7: Discussion
+
+LeVLJEPA slightly exceeds CLIP in zero-shot accuracy (12 .84% vs. 12 .37% ). These results indicate that LeVLJEPA scales competitively with data under the matched training regime. 14

@@ -1,0 +1,734 @@
+Title: EPnG: Adaptive Expert Prune-and-Grow for Parameter-Efficient MoE Fine-tuning
+
+URL Source: https://arxiv.org/pdf/2607.01789v1
+
+Published Time: Fri, 03 Jul 2026 00:38:01 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# EPnG: Adaptive Expert Prune-and-Grow for Parameter-Efficient MoE Fine-tuning 
+
+## Ahin Lee 
+
+Ulsan National Institute of Science & Technology (UNIST) Ulsan, Republic of Korea ahin@unist.ac.kr 
+
+## Sehyun Yun 
+
+Ulsan National Institute of Science & Technology (UNIST) Ulsan, Republic of Korea nawhji@unist.ac.kr 
+
+## Taesik Gong 
+
+Ulsan National Institute of Science & Technology (UNIST) Ulsan, Republic of Korea taesik.gong@unist.ac.kr 
+
+Abstract 
+
+Mixture-of-Experts (MoE) models scale efficiently but remain costly to adapt due to redundant experts and uniform parameter allocation. Existing parameter-efficient fine-tuning (PEFT) methods such as LoRA ignore MoE routing dynamics, leading to suboptimal resource use. We propose EPnG, an adaptive prune-and-grow framework that reallocates LoRA capacity based on expert importance derived from router gate probabilities. EPnG prunes under-utilized experts and expands high-importance experts via rank growth with orthogonal initialization, while maintaining a fixed parameter budget. Across OLMoE and Qwen1.5-MoE, EPnG consistently outperforms LoRA under the same budget and achieves performance comparable to full fine-tuning while updating only 0.55%–0.72% of parameters (up to 140x-180x fewer). These results demonstrate that aligning PEFT with MoE routing yields a more effective and scalable fine-tuning strategy. 
+
+CCS Concepts 
+
+• Computing methodologies → Neural networks ; Learning set-tings .
+
+Keywords 
+
+Mixture-of-Experts,Parameter-Efficient Fine-Tuning, Low-Rank Adap-tation (LoRA), Sparse Neural Networks, Large Language Models 
+
+ACM Reference Format: 
+
+Ahin Lee, Sehyun Yun, and Taesik Gong. 2026. EPnG: Adaptive Expert Prune-and-Grow for Parameter-Efficient MoE Fine-tuning. In The 24th An-nual International Conference on Mobile Systems, Applications and Services (MobiSys Workshop ’26), June 21–25, 2026, Cambridge, United Kingdom. ACM, New York, NY, USA, 6 pages. https://doi.org/10.1145/3812836.3814761 
+
+1 Introduction 
+
+Mixture-of-Experts (MoE) architectures enable scalable large lan-guage models (LLMs) by activating only a subset of experts per token [ 1, 7, 8, 16 , 23 ]. However, this efficiency does not extend to fine-tuning, where updating all experts remains prohibitively expensive [ 2, 12 , 22 ]. These challenges are further compounded by expert imbalance: some experts are consistently over-utilized while others are rarely activated [ 7, 13 ], making uniform parameter allocation particularly wasteful during adaptation.  
+
+> This work is licensed under a Creative Commons Attribution 4.0 International License.
+> MobiSys Workshop ’26, Cambridge, United Kingdom
+> ©2026 Copyright held by the owner/author(s). ACM ISBN 979-8-4007-2712-2/26/06 https://doi.org/10.1145/3812836.3814761
+
+E! E" E#
+
+…E$ r r r r
+
+E% r 
+
+> MoE Layer
+
+MoE + Adapter 
+
+EPnG (ours) 
+
+> Exper tAdapter
+
+E! E" E#
+
+…E$ 2r 3r 
+
+E% r 
+
+> Prune Grow
+> Router
+> Router
+> Gate Prob.
+
+Figure 1: Standard MoE with uniform LoRA allocation (top) vs. EPnG (bottom). EPnG prunes low-importance experts and increases the ranks of frequently selected ones, yielding an importance-aware allocation under a fixed budget. 
+
+Parameter-efficient fine-tuning (PEFT) methods such as LoRA [ 11 ,14 , 15 ] reduce training cost but ignore MoE routing dynamics, ap-plying updates uniformly across experts. In dense models, every parameter receives consistent gradient updates across tokens. In contrast, MoE layers activate only a small subset of experts per token, resulting in sparse and uneven parameter updates. This discrepancy means that uniform LoRA allocation leaves critical experts under-adapted while wasting capacity on rarely selected ones [ 7, 13 , 19 , 26 ]. Existing MoE-aware PEFT approaches either lack effective reallocation mechanisms or incur substantial parame-ter overhead [17, 24]. We propose EPnG (Expert Prune-and-Grow LoRA), an adaptive PEFT framework for efficient MoE fine-tuning. EPnG estimates expert importance from router statistics, prunes low-importance experts, and reallocates the released budget to high-importance ex-perts by expanding their LoRA ranks with orthogonal initialization. This dynamic reallocation aligns parameter allocation with routing behavior and concentrates capacity on task-relevant experts. Across OLMoE and Qwen1.5-MoE, EPnG consistently outper-forms static LoRA under the same parameter budget and achieves performance comparable to full fine-tuning while updating over 140 × fewer parameters. These results demonstrate that coupling PEFT with MoE routing yields a more effective and scalable fine-tuning strategy.  
+
+> arXiv:2607.01789v1 [cs.LG] 2 Jul 2026 MobiSys Workshop ’26, June 21–25, 2026, Cambridge, United Kingdom Ahin Lee, Sehyun Yun, and Taesik Gong
+
+2 Background 
+
+Mixture-of-Experts. Mixture-of-Experts (MoE) architectures scale large language models (LLMs) via conditional computation [ 1, 8, 16 ]. Given an input token representation 𝑥 ∈ R𝑑 , a router selects the top-𝑘 experts from E = {𝐸 1, . . . , 𝐸 𝑀 }. The router produces logits 
+
+ℎ(𝑥 ) = 𝑊 router 𝑥 ∈ R𝑀 , which are normalized via softmax to obtain gate probabilities: 
+
+𝑝 𝑖 (𝑥 ) = 𝑒 ℎ (𝑥 )𝑖 
+
+Í𝑀 𝑗 =1 𝑒 ℎ (𝑥 ) 𝑗 , 𝑖 = 1, . . . , 𝑀. (1) The selected expert set is S( 𝑥 ) = Top-k (𝑝 (𝑥 )) , |S( 𝑥 )| = 𝑘, and the MoE output is 
+
+MoE (𝑥 ) =∑︁   
+
+> 𝑖 ∈ S ( 𝑥 )
+
+𝑝 𝑖 (𝑥 )𝐸 𝑖 (𝑥 ) (2) While this sparse activation enables efficient scaling, expert utilization is highly imbalanced in practice [ 5 , 23 ], motivating the need to quantify expert importance via routing signals. 
+
+Low-Rank Adaptation. Low-Rank Adaptation (LoRA) [ 11 ] en-ables parameter-efficient fine-tuning by injecting low-rank updates into pretrained weights. For 𝑊 ∈ R𝑑 ×𝑑 :
+
+𝑊 ′ = 𝑊 + Δ𝑊 , Δ𝑊 = 𝐴𝐵, (3) where 𝐴 ∈ R𝑑 ×𝑟 , 𝐵 ∈ R𝑟 ×𝑑 , and 𝑟 ≪ 𝑑 . This reduces trainable parameters from 𝑑 2 to 2𝑑𝑟 .
+
+Challenges in MoE Fine-Tuning. In dense models, parameters are uniformly updated across tokens, whereas MoE activates only a subset of experts, leading to sparse and uneven updates. Applying LoRA uniformly across experts thus results in inefficient parameter allocation, motivating MoE-aware adaptation strategies. 
+
+3 Methodology 
+
+We propose EPnG (Expert Prune-and-Grow), an adaptive PEFT framework for efficient MoE fine-tuning. As illustrated in Figure 2, EPnG collects router gate probabilities during training, aggregates them into expert importance scores, prunes low-importance ex-perts, and reallocates the released budget by expanding the LoRA ranks of high-importance experts. This prune-and-grow loop dy-namically concentrates capacity on task-relevant experts under a fixed parameter budget. 
+
+3.1 Expert Importance Score Aggregation 
+
+We estimate expert importance from router gate probabilities col-lected during fine-tuning (Figure 2, left). For each token 𝑥 (𝑛 ) , the router outputs a distribution over experts, {𝑝 𝑖 (𝑥 (𝑛 ) )} 𝑀 𝑖 =1. We aggre-gate these probabilities across tokens by averaging them (Figure 2, middle): 
+
+¯𝑝 𝑖 = 1
+
+𝑁 
+
+> 𝑁
+
+∑︁ 
+
+> 𝑛 =1
+
+𝑝 𝑖 (𝑥 (𝑛 ) ), (4) where 𝑁 is the total number of processed tokens. We refer to ¯𝑝 𝑖 as the Expert Importance Score of expert 𝐸 𝑖 . This score is the basis for pruning and rank reallocation. 
+
+3.2 Pruning Low-Importance Experts 
+
+Using the computed importance scores, we identify underutilized experts for pruning and reallocate the released budget in the grow-ing stage (Section 3.3). 
+
+Expert Selection for Pruning. We define the pruning threshold 𝜏 𝑝 
+
+such that the lowest 𝛼 fraction of expert importance scores { ¯𝑝 (𝑙 ) 
+
+> 𝑖
+
+}
+
+fall below it, where 𝛼 ∈ ( 0, 1) is the pruning ratio. The pruned set is 
+
+P = {𝐸 (𝑙 ) 
+
+> 𝑖
+
+| ¯𝑝 (𝑙 ) 
+
+> 𝑖
+
+≤ 𝜏 𝑝 , 𝑙 ∈ { 1, . . . , 𝐿 }, 𝑖 ∈ { 1, . . . , 𝑀 }} . (5) Here, 𝐸 (𝑙 ) 
+
+> 𝑖
+
+denotes expert 𝑖 in layer 𝑙 , ¯𝑝 (𝑙 ) 
+
+> 𝑖
+
+its importance score, 𝐿 
+
+the number of MoE layers, and 𝑀 the number of experts per layer. Repeating this thresholding for 𝑡 cycles yields a cumulative pruned fraction of 1 − ( 1 − 𝛼 )𝑡 .
+
+Pruning Operation. For each selected expert 𝐸 (𝑙 ) 
+
+> 𝑖
+
+∈ P , we remove its LoRA parameters: 
+
+Δ𝑊 (𝑙 ) 
+
+> 𝑖
+
+= 0, ∀𝐸 (𝑙 ) 
+
+> 𝑖
+
+∈ P . (6) This removes the expert’s LoRA contribution and optimizer state, freeing parameter budget for growth. 
+
+3.3 Growing High-Importance Experts 
+
+We reallocate the budget released by pruning to highly utilized experts by expanding their LoRA ranks. We focus on the budget-neutral setting, where growth matches the budget released by prun-ing. 
+
+Expert Selection for Growth. We define the growth threshold 𝜏 𝑔 
+
+such that the top 𝛽 fraction of importance scores { ¯𝑝 (𝑙 ) 
+
+> 𝑖
+
+} exceed it, where 𝛽 ∈ ( 0, 1) controls the growth ratio. The selected set is 
+
+G = {𝐸 (𝑙 ) 
+
+> 𝑖
+
+| ¯𝑝 (𝑙 ) 
+
+> 𝑖
+
+≥ 𝜏 𝑔 , 𝑙 ∈ { 1, . . . , 𝐿 }, 𝑖 ∈ { 1, . . . , 𝑀 }} . (7) Repeated application for 𝑡 cycles yields a cumulative grown fraction of 1 − ( 1 − 𝛽 )𝑡 .
+
+Rank Expansion. For each expert 𝐸 (𝑙 ) 
+
+> 𝑖
+
+∈ G , we expand its LoRA rank from 𝑟 (𝑙 ) 
+
+> 𝑖
+
+to 𝑟 (𝑙 ) 
+
+> 𝑖
+
++ Δ𝑟 by appending new low-rank components. If the original update is Δ𝑊 (𝑙 ) 
+
+> 𝑖
+
+= 𝐴 (𝑙 ) 
+
+> 𝑖
+
+𝐵 (𝑙 ) 
+
+> 𝑖
+
+, the expanded update becomes: 
+
+Δ𝑊 (𝑙 )′  
+
+> 𝑖
+
+= [𝐴 (𝑙 ) 
+
+> 𝑖
+
+𝐴 new ,(𝑙 ) 
+
+> 𝑖
+
+]
+
+"
+
+𝐵 (𝑙 )
+
+> 𝑖
+
+𝐵 new ,(𝑙 )
+
+> 𝑖
+
+#
+
+. (8) 
+
+Initialization and Orthogonalization. To ensure stable and non-redundant expansion, 𝐴 new ,(𝑙 ) 
+
+> 𝑖
+
+is initialized with Kaiming initializa-tion [ 9], while 𝐵 new ,(𝑙 ) 
+
+> 𝑖
+
+is initialized to zero, following LoRA [ 11 ]. We further orthogonalize the new directions against the existing subspace: 
+
+𝐴 new ,(𝑙 ) 
+
+> 𝑖
+
+← ( 𝐼 − 𝑄 (𝑙 ) 
+
+> 𝑖
+
+𝑄 (𝑙 )
+
+> 𝑖
+> ⊤
+
+)𝐴 new ,(𝑙 ) 
+
+> 𝑖
+
+, (9) where 𝑄 (𝑙 ) 
+
+> 𝑖
+
+= orth (𝐴 (𝑙 ) 
+
+> 𝑖
+
+) is an orthonormal basis spanning the columns of 𝐴 (𝑙 ) 
+
+> 𝑖
+
+.EPnG: Adaptive Expert Prune-and-Grow for Parameter-Efficient MoE Fine-tuning MobiSys Workshop ’26, June 21–25, 2026, Cambridge, United Kingdom Finetuning 
+
+!(") !($) !(%) !(&) !(')…
+
+Router    
+
+> Gate Probability !!(#")
+
+Aggregation      
+
+> !̅!='!!(#")
+> #
+> "$%
+> Expert Importance Score
+> Expert Pool
+
+Prune Grow   
+
+> lowest score highest score
+
+…     
+
+> LoRA removal LoRA rank ↑
+> tokens
+> 3r rrr
+
+Figure 2: Illustration of EPnG’s end-to-end training procedure. 
+
+3.4 Prune-and-Grow Adaptation Loop 
+
+Warm-up for Stable Importance Estimation. Because expert im-portance evolves during fine-tuning, we first use a warm-up stage of 𝑇 𝑤 steps, during which gate statistics are collected but no pruning or growth is applied. 
+
+Adaptive Parameter Reallocation. After warm-up, the prune-and-grow procedure is triggered every 𝑇 𝑝 steps. At each interval, we compute { ¯𝑝 (𝑙 ) 
+
+> 𝑖
+
+}, prune low-importance experts (Section 3.2), and expand high-importance experts (Section 3.3). Under the constraint 
+
+𝛼 ≥ 𝛽 and assuming uniform rank expansion per expert, pruning releases equal or more parameters than growth consumes, ensuring that the total number of trainable parameters does not exceed the initial budget. 
+
+Summary. The prune-and-grow loop thus turns finetuning into a dynamic, budget-aware adaptation process. By reallocating LoRA parameters according to router-derived importance signals, it pro-motes (i) consistent utilization of the limited parameter budget, (ii) reinforcement of task-relevant experts, and (iii) suppression of redundant adaptations. Algorithm 1 provides the pseudocode for the full training loop, and the overall workflow is illustrated in Figure 2. 
+
+4 Experiments 4.1 Experimental Setup 
+
+Datasets and evaluation. We evaluate EPnG across three domains: mathematical reasoning, code generation, and personalization. 
+
+Mathematical reasoning. We fine-tune on MetaMathQA [ 25 ], a bootstrapped dataset of diverse math questions, and evaluate on GSM8K [ 6], which consists of grade-school arithmetic word prob-lems, and MATH [ 10 ], a large-scale benchmark covering competition-level mathematics. Performance is measured by Exact Match (EM), i.e., the proportion of predictions that exactly match the ground-truth answer. 
+
+Code generation. We fine-tune on Code Alpaca [ 18 ], an instruction-following dataset for programming tasks, and evaluate on Hu-manEval [ 4 ] and MBPP [ 3 ], two widely adopted benchmarks for code synthesis. We report pass@10 [ 4], which estimates the prob-ability of generating at least one correct solution within ten inde-pendently sampled candidates. 
+
+Algorithm 1: Expert Prune-and-Grow (EPnG) Training 
+
+Input: MoE-LLM with initial LoRA rank 𝑟 0, dataset 𝐷 ,warm-up steps 𝑇 𝑤 , prune interval 𝑇 𝑝 , pruning and growth ratios 𝛼 , 𝛽 , decay factor 𝜆 
+
+Initialize gate statistics ¯𝑝 (𝑙 ) 
+
+> 𝑖
+
+← 0 for all experts 
+
+for 𝑠𝑡𝑒𝑝 = 1 to 𝑚𝑎𝑥 _𝑠𝑡𝑒𝑝𝑠 do 
+
+Sample batch 𝑥 ∼ 𝐷 and compute loss Update gate probabilities ¯𝑝 (𝑙 )
+
+> 𝑖
+
+Optimize model parameters via backpropagation 
+
+if 𝑠𝑡𝑒𝑝 ≥ 𝑇 𝑤 and 𝑠𝑡𝑒𝑝 mod 𝑇 𝑝 = 0 then 
+
+Compute pruning threshold 𝜏 𝑝 and growth threshold 𝜏 𝑔 from { ¯𝑝 (𝑙 ) 
+
+> 𝑖
+
+}
+
+Select experts to prune: P = {𝐸 (𝑙 ) 
+
+> 𝑖
+
+| ¯𝑝 (𝑙 ) 
+
+> 𝑖
+
+≤ 𝜏 𝑝 }
+
+Select experts to grow: G = {𝐸 (𝑙 ) 
+
+> 𝑖
+
+| ¯𝑝 (𝑙 ) 
+
+> 𝑖
+
+≥ 𝜏 𝑔 }
+
+foreach 𝐸 (𝑙 ) 
+
+> 𝑖
+
+∈ P do 
+
+Remove LoRA parameters: Δ𝑊 (𝑙 ) 
+
+> 𝑖
+
+← 0
+
+foreach 𝐸 (𝑙 ) 
+
+> 𝑖
+
+∈ G do 
+
+Expand LoRA rank: 𝑟 (𝑙 ) 
+
+> 𝑖
+
+← 𝑟 (𝑙 ) 
+
+> 𝑖
+
++ Δ𝑟 
+
+Initialize 𝐴 new ,(𝑙 ) 
+
+> 𝑖
+
+with Kaiming init, 𝐵 new ,(𝑙 ) 
+
+> 𝑖
+
+← 0
+
+Orthogonalize: 
+
+𝐴 new ,(𝑙 ) 
+
+> 𝑖
+
+← ( 𝐼 − 𝑄 (𝑙 ) 
+
+> 𝑖
+
+𝑄 (𝑙 )
+
+> 𝑖
+> ⊤
+
+)𝐴 new ,(𝑙 )
+
+> 𝑖
+
+Decay gate statistics: ¯𝑝 (𝑙 ) 
+
+> 𝑖
+
+← 𝜆 ¯𝑝 (𝑙 )
+
+> 𝑖
+
+Personalization. We evaluate on PrefEval [ 27 ], a benchmark designed to measure how well models infer and follow user-specific preferences in conversation. Model outputs are assessed via pair-wise comparison using GPT-4o-mini [ 1] as an automatic evaluator, following the official preference following accuracy metric. To ensure fair and reproducible comparison, all decoding and evaluation settings are fixed across methods. For generation tasks, we use temperature = 0.8, top-𝑝 = 0.95 , and a maximum genera-tion length of 512 tokens. For pass@10 evaluation, we sample 10 independent outputs per problem. For PrefEval, we use identical prompts and random seeds across all methods. 
+
+Models and baselines. We conduct experiments on two public MoE backbones: allenai/OLMoE-1B-7B-0125 [ 20 ] and Qwen/Qwen1.5-MoE-A2.7B [ 21 ]. We compare four adaptation strategies: full fine-tuning (FFT), static LoRA, ESFT [ 24 ], and EPnG. FFT updates all MobiSys Workshop ’26, June 21–25, 2026, Cambridge, United Kingdom Ahin Lee, Sehyun Yun, and Taesik Gong 
+
+Table 1: Results on OLMoE. Metrics: Exact Match (%) for GSM8K/MATH, pass@10 (%) for MBPP/HumanEval, and ac-curacy (%) for PrefEval. Trainable parameters are reported as the average % of the full model.                                      
+
+> Method Params. (%) Math (EM) Code (pass@10) Personalization Avg. GSM8K MATH MBPP HumanEval PrefEval FFT 100 64.97 24.68 43.60 25.00 34.44 38.54 ESFT 5.08 65.13 22.49 42.20 24.39 36.11 38.06 LoRA (static) 0.72 64.44 21.90 39.60 22.56 35.00 36.70 Ours (EPnG) 0.72 66.26 21.40 42.40 23.78 38.33 38.43
+
+Table 2: Results on Qwen1.5-MoE. Trainable parameters are reported as the average % of the full model.                          
+
+> Method Params. (%) Math (EM) Code (pass@10) Avg. GSM8K MATH MBPP HumanEval ESFT 15.91 64.14 34.54 60.40 76.83 58.98
+> LoRA (static) 0.55 62.93 34.96 60.40 70.12 57.60 Ours (EPnG) 0.55 64.22 37.32 60.00 74.39 58.98
+
+model parameters and serves as an upper-bound reference. Static LoRA applies a fixed rank to all experts. ESFT is a recent MoE-specific PEFT baseline, and EPnG adaptively reallocates LoRA ca-pacity using expert importance scores. 
+
+Implementation details. LoRA adapters are applied to the up_proj 
+
+and gate_proj matrices. Unless otherwise stated, we use pruning ratio 𝛼 = 0.2, growth ratio 𝛽 = 0.2, warm-up steps 𝑇 𝑤 = 100 , up-date interval 𝑇 𝑝 = 50 , and exponential decay factor 𝜆 = 0.2 for gate statistics. We follow the standard evaluation protocol for each benchmark: EM for GSM8K and MATH, pass@10 for HumanEval and MBPP, and pairwise preference evaluation on PrefEval using GPT-4o-mini. 
+
+4.2 Main Results 
+
+Results on OLMoE. Table 1 shows that EPnG updates only 0.72% 
+
+of parameters, over 140 × fewer than FFT, while achieving compa-rable overall performance. In particular, EPnG outperforms FFT on GSM8K ( 66 .26 vs. 64 .97 ) and improves over static LoRA under the same budget by +1.82 points on GSM8K and +1.73 points on average. This shows that reallocating LoRA capacity across experts is more effective than uniform allocation. 
+
+Results on Qwen1.5-MoE. Table 2 shows that EPnG remains effec-tive on a larger MoE backbone. Although EPnG tunes only 0.55% 
+
+of parameters, compared with 15 .91% for ESFT, it matches ESFT in average performance ( 58 .98 ). Under the same budget as static LoRA, EPnG improves MATH from 34 .96 to 37 .32 and HumanEval from 
+
+70 .12 to 74 .39 , indicating that dynamic expert-wise reallocation scales favorably. 
+
+Overall comparison. Across both backbones, EPnG consistently improves or matches stronger baselines while tuning less than 
+
+1% of parameters. On OLMoE, it approaches FFT with over 140 ×
+
+fewer trainable parameters; on Qwen1.5-MoE, it matches ESFT with about 29 × fewer. Overall, these results demonstrate that routing-aware prune-and-grow provides a scalable and parameter-efficient alternative to static LoRA and costly full fine-tuning. 
+
+5 Further Analysis 
+
+We provide additional analyses to understand why EPnG improves performance under tight parameter budgets. Unless otherwise stated, all analyses are conducted on GSM8K with OLMoE. Figures 3–5 and Tables 3–4 summarize the results. 
+
+Ablation study. We conduct an ablation study to examine the contributions of pruning and growing (Figure 3a). Compared to the static LoRA baseline (65.50%), applying either growing (64.97%) or pruning (65.81%) in isolation yields comparable or slightly im-proved performance. Notably, pruning proves more effective than growing, as it achieves better accuracy with fewer parameters than the baseline. In contrast, combining both operations leads to the best result (66.41%), indicating that pruning and growing comple-ment each other: pruning eliminates redundant components, while growing reinforces useful ones. We speculate that pruning acts as an implicit regularizer, re-moving redundancy and encouraging the model to concentrate on essential representations. Growing, by contrast, may introduce noise without resolving redundancy, and newly added parameters can be underutilized early in training. Together, these effects explain why combining both operations outperforms either alone. 
+
+Rank sensitivity. Figure 3b shows that static LoRA is sensitive to the choice of base rank, with noticeable performance fluctuations across ranks. EPnG remains considerably more stable, suggesting that dynamic reallocation reduces the need for precise rank tuning. 
+
+Effect of the prune-and-grow fraction. Figure 3c studies the prune-and-grow fraction. Performance improves as the fraction increases up to around 0.2, after which the gains saturate. This indicates that moderate reallocation provides the best trade-off between removing redundancy and preserving sufficient expert diversity. 
+
+Layer-wise behavior. Figure 4 visualizes how pruning and grow-ing are distributed across layers, showing that shallower layers are pruned more heavily while deeper layers receive expanded ranks. This demonstrates that EPnG adaptively concentrates ca-pacity toward more task-relevant layers rather than allocating it uniformly. 
+
+Expert importance dynamics. A key motivation for EPnG is that expert importance is not static during fine-tuning. To verify this, we compare expert importance scores before and after LoRA fine-tuning on 1,000 MetaMathQA examples using OLMoE. Figure 5 shows that the set of highly important experts changes substan-tially after fine-tuning: some experts remain consistently important, while others newly emerge or become less relevant. This confirms that static expert allocation is suboptimal and supports the need for repeated prune-and-grow updates during training. 
+
+Generalization after fine-tuning. To test whether EPnG preserves the backbone’s general capability, we evaluate fine-tuned models on ARC-C, ARC-E, and BoolQ without task-specific adaptation. Table 3 shows that EPnG preserves performance close to the base model, EPnG: Adaptive Expert Prune-and-Grow for Parameter-Efficient MoE Fine-tuning MobiSys Workshop ’26, June 21–25, 2026, Cambridge, United Kingdom 
+
+Method Acc. 
+
+LoRA 65.50 Grow only 64.97 Prune only 65.81 Prune & Grow 66.41 
+
+(a) Ablation study. 2 4 8 16 
+
+Rank 
+
+64.5 
+
+65.0 
+
+65.5 
+
+66.0 
+
+66.5 
+
+> Accuracy (%)
+
+Rank Sensitivity  
+
+> LoRA
+> EPnG
+
+(b) Rank sensitivity. 0.1 0.2 0.3 
+
+PNG FRAC 
+
+0
+
+200 
+
+400 
+
+600 
+
+800 
+
+1000 
+
+> Participated Expert Count
+
+Prune & Grow Fraction 
+
+> Total Expert
+> Expert Count
+> Accuracy (EM, %)
+
+63 
+
+64 
+
+65 
+
+66 
+
+67 
+
+68  
+
+> Accuracy (EM, %)
+
+(c) Effect of prune-and-grow fraction. 
+
+Figure 3: Analysis of EPnG. (a) Ablation over pruning and growth. (b) Accuracy across different base LoRA ranks. (c) Effect of the prune-and-grow fraction on accuracy and expert usage. metamathqa                                                                                                           
+
+> codealpaca
+> Prune
+> 0.73 0.77 0.80 0.75 0.75 0.69 0.70 0.67 0.62 0.38 0.31 0.41 0.52 0.48 0.52 0.34
+> 0.73 0.91 0.84 0.78 0.78 0.58 0.77 0.67 0.59 0.48 0.38 0.27 0.52 0.50 0.44 0.20
+> 0.0
+> 0.5
+> 1.0
+> metamathqa
+> codealpaca
+> Grow
+> 0.45 0.39 0.32 0.36 0.28 0.27 0.19 0.34 0.50 0.72 1.08 0.77 0.97 0.94 0.94 0.94
+> 0.42 0.22 0.33 0.37 0.23 0.28 0.22 0.42 0.45 0.67 0.95 1.09 0.77 0.84 1.05 1.12
+> 0.0
+> 0.5
+> 1.0
+> L0 L1 L2 L3 L4 L5 L6 L7 L8 L9 L10 L11 L12 L13 L14 L15
+> Layer Index
+> metamathqa
+> codealpaca
+> Prune
+> and
+> Grow
+> 5.8 5.0 4.2 4.9 4.2 4.6 3.9 5.3 7.0 10.8 14.1 10.9 11.6 11.6 11.4 12.8
+> 5.5 2.5 3.9 4.7 3.6 5.6 3.6 6.0 6.9 9.5 12.6 14.6 10.0 10.8 12.9 15.4 5
+> 10
+> 15
+
+Figure 4: Layer-wise behavior of EPnG. Top: pruning ratios across layers. Middle: growth ratios across layers. Bottom: resulting average rank distribution after repeated prune-and-grow updates. EPnG prunes shallower layers more aggres-sively and reallocates capacity toward deeper layers. 0   
+
+> 1
+> 2
+> 3
+> 4
+> 5
+> 6
+> 7
+> 8
+> 9
+> 10
+> 11
+> 12
+> 13
+> 14
+> 15
+> Base
+> E0
+> E1
+> E2
+> E3
+> E4
+> E5
+> E6
+> E7
+> E8
+> E9
+> E10
+> E11
+> E12
+> E13
+> E14
+> E15
+> E16
+> E17
+> E18
+> E19
+> E20
+> E21
+> E22
+> E23
+> E24
+> E25
+> E26
+> E27
+> E28
+> E29
+> E30
+> E31
+> E32
+> E33
+> E34
+> E35
+> E36
+> E37
+> E38
+> E39
+> E40
+> E41
+> E42
+> E43
+> E44
+> E45
+> E46
+> E47
+> E48
+> E49
+> E50
+> E51
+> E52
+> E53
+> E54
+> E55
+> E56
+> E57
+> E58
+> E59
+> E60
+> E61
+> E62
+> E63
+> Expert ID
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> 6
+> 7
+> 8
+> 9
+> 10
+> 11
+> 12
+> 13
+> 14
+> 15
+> step-500
+> Shared Top 20% Unique Top 20% Shared Bottom 20% Unique Bottom 20%
+
+Figure 5: Expert importance before and after fine-tuning. The top and bottom 20% experts are highlighted, distinguish-ing experts whose importance is preserved (Shared) from those whose importance changes after fine-tuning (Unique). Fine-tuning substantially reshapes the expert importance distribution. 
+
+whereas FFT degrades more noticeably. This suggests that EPnG im-proves task adaptation without substantially compromising general capabilities. 
+
+Table 3: General evaluation after fine-tuning. EPnG largely preserves the general capability of the backbone. 
+
+Model ARC-C ARC-E BoolQ Base 50.17 69.30 66.54 FFT 48.16 63.51 65.75 LoRA 50.17 68.42 65.23 EPnG 50.17 69.12 65.75 
+
+Table 4: Effect of LoRA placement in OLMoE. EPnG consis-tently performs well across different adapter placements, demonstrating robustness to module configuration. 
+
+Method Params. (%) GSM8K MATH Avg. LoRA (up+gate) 0.72 64.44 21.90 43.17 LoRA (+down) 1.09 65.35 22.33 43.84 EPnG (up+gate) 0.72 66.26 21.40 43.83 EPnG (+down) 1.09 66.19 23.50 44.85 
+
+Effect of LoRA placement. We also study whether adding LoRA to 
+
+down_proj provides additional gains beyond the default up_proj +
+
+gate_proj setting. As shown in Table 4, although this increases the parameter count from 0.72% to 1.09%, EPnG consistently maintains strong performance, with improvements observed as the parameter budget increases. 
+
+Summary. These analyses support the central design of EPnG. Pruning and growth are complementary, dynamic reallocation re-duces rank sensitivity, moderate pruning works best, and the re-sulting capacity shifts concentrate on deeper, more task-relevant layers. Moreover, expert importance changes during fine-tuning, and general capability is preserved. Together, these findings explain why EPnG consistently outperforms static LoRA under the same parameter budget. 
+
+6 Discussion 
+
+A key limitation of EPnG is that pruning permanently removes LoRA parameters from under-utilized experts, making recovery MobiSys Workshop ’26, June 21–25, 2026, Cambridge, United Kingdom Ahin Lee, Sehyun Yun, and Taesik Gong 
+
+impossible if a previously pruned expert becomes important in later training stages. To mitigate this risk, EPnG applies pruning gradu-ally, targeting only the lowest-importance experts at each interval rather than aggressively removing a large fraction at once. This conservative strategy reduces the chance of prematurely discard-ing experts that may become task-relevant as training progresses. An alternative would be to retain pruned weights in memory and restore them when needed; however, this introduces non-trivial memory overhead and raises questions about whether retained parameters remain compatible with the evolved adapter subspace. We leave this direction to future work. Beyond irreversibility, EPnG introduces additional hyperparame-ters compared to static LoRA, including the pruning ratio 𝛼 , growth ratio 𝛽 , warm-up steps 𝑇 𝑤 , update interval 𝑇 𝑝 , and decay factor 
+
+𝜆 , which may impose non-trivial tuning costs when adapting to new models or tasks. However, our experiments show that a single fixed configuration generalizes well across different datasets and model backbones, suggesting that EPnG is not overly sensitive to hyperparameter choices in practice. 
+
+7 Conclusion 
+
+We introduced EPnG (Expert Prune-and-Grow), a parameter-efficient fine-tuning framework for Mixture-of-Experts (MoE) models that dynamically reallocates LoRA capacity based on router-derived ex-pert importance. By pruning under-utilized experts and expanding high-importance ones under a fixed parameter budget, EPnG aligns adaptation with MoE routing dynamics. Across OLMoE and Qwen1.5-MoE, EPnG achieves performance comparable to or better than full fine-tuning and ESFT while up-dating only about 1% of parameters, and consistently outperforms static LoRA. Further analysis shows that EPnG stabilizes rank sen-sitivity and adaptively redistributes capacity toward deeper, more task-relevant layers, leading to more effective utilization of limited parameters. Overall, EPnG demonstrates that coupling PEFT with dynamic expert allocation is a scalable and effective strategy for MoE fine-tuning under strict resource constraints. These results suggest that expert-wise parameter allocation should be treated as a dynamic optimization problem rather than a fixed design choice, an insight that opens broader opportunities for routing-aware adaptation in increasingly large and sparse language models. 
+
+References 
+
+[1] Josh Achiam, Steven Adler, Sandhini Agarwal, Lama Ahmad, Ilge Akkaya, Flo-rencia Leoni Aleman, Diogo Almeida, Janko Altenschmidt, Sam Altman, et al .2023. Gpt-4 technical report. arXiv preprint arXiv:2303.08774 (2023). [2] Reza Yazdani Aminabadi, Samyam Rajbhandari, Ammar Ahmad Awan, Cheng Li, Du Li, Elton Zheng, Olatunji Ruwase, Shaden Smith, Minjia Zhang, Jeff Rasley, et al . 2022. Deepspeed-inference: enabling efficient inference of transformer mod-els at unprecedented scale. In SC22: International Conference for High Performance Computing, Networking, Storage and Analysis . IEEE, 1–15. [3] Jacob Austin, Augustus Odena, Maxwell Nye, Maarten Bosma, Henryk Michalewski, David Dohan, Ellen Jiang, Carrie Cai, Michael Terry, Quoc Le, et al . 2021. Program synthesis with large language models. arXiv preprint arXiv:2108.07732 (2021). [4] Mark Chen, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique Ponde de Oliveira Pinto, Jared Kaplan, Harri Edwards, et al . 2021. Evaluating Large Lan-guage Models Trained on Code. arXiv:2107.03374 [cs.LG] [5] Zewen Chi, Li Dong, Shaohan Huang, Damai Dai, Shuming Ma, Barun Patra, Saksham Singhal, Payal Bajaj, Xia Song, Xian-Ling Mao, et al . 2022. On the repre-sentation collapse of sparse mixture of experts. Advances in Neural Information Processing Systems 35 (2022), 34600–34613. [6] Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, et al . 2021. Training verifiers to solve math word problems. arXiv preprint arXiv:2110.14168 (2021). [7] William Fedus, Barret Zoph, and Noam Shazeer. 2022. Switch transformers: scaling to trillion parameter models with simple and efficient sparsity. J. Mach. Learn. Res. 23, 1, Article 120 (Jan. 2022), 39 pages. [8] Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schelten, Alex Vaughan, and et al. Yang. 2024. The Llama 3 Herd of Models. arXiv preprint arXiv:2407.21783 (2024). [9] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. 2015. Delving deep into rectifiers: Surpassing human-level performance on imagenet classification. In Proceedings of the IEEE international conference on computer vision . 1026–1034. [10] Dan Hendrycks, Collin Burns, Saurav Kadavath, Akul Arora, Steven Basart, Eric Tang, Dawn Song, and Jacob Steinhardt. 2021. Measuring mathematical problem solving with the math dataset. arXiv preprint arXiv:2103.03874 (2021). [11] Edward J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, Weizhu Chen, et al . 2022. Lora: Low-rank adaptation of large language models. ICLR 1, 2 (2022), 3. [12] Young Jin Kim, Ammar Ahmad Awan, Alexandre Muzio, Andres Felipe Cruz Sali-nas, Liyang Lu, Amr Hendy, Samyam Rajbhandari, Yuxiong He, and Hany Hassan Awadalla. 2021. Scalable and efficient moe training for multitask multilingual models. arXiv preprint arXiv:2109.10465 (2021). [13] Dmitry Lepikhin, HyoukJoong Lee, Yuanzhong Xu, Dehao Chen, Orhan Firat, Yanping Huang, Maxim Krikun, Noam Shazeer, and Zhifeng Chen. 2021. {GS}hard: Scaling Giant Models with Conditional Computation and Automatic Sharding. In International Conference on Learning Representations .[14] Brian Lester, Rami Al-Rfou, and Noah Constant. 2021. The power of scale for parameter-efficient prompt tuning. arXiv preprint arXiv:2104.08691 (2021). [15] Xiang Lisa Li and Percy Liang. 2021. Prefix-tuning: Optimizing continuous prompts for generation. arXiv preprint arXiv:2101.00190 (2021). [16] Aixin Liu, Bei Feng, Bing Xue, Bingxuan Wang, Bochao Wu, Chengda Lu, Cheng-gang Zhao, Chengqi Deng, Chenyu Zhang, Chong Ruan, et al . 2024. Deepseek-v3 technical report. arXiv preprint arXiv:2412.19437 (2024). [17] Yilun Liu, Yunpu Ma, Shuo Chen, Zifeng Ding, Bailan He, Zhen Han, and Volker Tresp. 2024. Perft: Parameter-efficient routed fine-tuning for mixture-of-expert model. arXiv preprint arXiv:2411.08212 (2024). [18] Ziyang Luo, Can Xu, Pu Zhao, Qingfeng Sun, Xiubo Geng, Wenxiang Hu, Chongyang Tao, Jing Ma, Qingwei Lin, and Daxin Jiang. 2023. Wizardcoder: Empowering code large language models with evol-instruct. arXiv preprint arXiv:2306.08568 (2023). [19] Amil Merchant, Elahe Rahimtoroghi, Ellie Pavlick, and Ian Tenney. 2020. What happens to BERT embeddings during fine-tuning? arXiv preprint arXiv:2004.14448 
+
+(2020). [20] Niklas Muennighoff, Luca Soldaini, Dirk Groeneveld, Kyle Lo, Jacob Morrison, Sewon Min, Weijia Shi, Evan Pete Walsh, et al . 2025. OLMoE: Open Mixture-of-Experts Language Models. In International Conference on Learning Representations (ICLR) .[21] Qwen. 2024. Qwen1.5-MoE: Matching 7B Model Performance with 1/3 Activated Parameters. https://qwenlm.github.io/blog/qwen-moe/. Accessed: 2025-09-23. [22] Samyam Rajbhandari, Conglong Li, Zhewei Yao, Minjia Zhang, Reza Yazdani Aminabadi, Ammar Ahmad Awan, Jeff Rasley, and Yuxiong He. 2022. DeepSpeed-MoE: Advancing Mixture-of-Experts Inference and Training to Power Next-Generation AI Scale. CoRR abs/2201.05596 (2022). arXiv:2201.05596 [23] Noam Shazeer, Azalia Mirhoseini, Krzysztof Maziarz, Andy Davis, Quoc Le, Geoffrey Hinton, and Jeff Dean. 2017. Outrageously large neural networks: The sparsely-gated mixture-of-experts layer. arXiv preprint arXiv:1701.06538 (2017). [24] Zihan Wang, Deli Chen, Damai Dai, Runxin Xu, Zhuoshu Li, and Yu Wu. 2024. Let the Expert Stick to His Last: Expert-Specialized Fine-Tuning for Sparse Architec-tural Large Language Models. In Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing , Yaser Al-Onaizan, Mohit Bansal, and Yun-Nung Chen (Eds.). Association for Computational Linguistics, Miami, Florida, USA, 784–801. doi:10.18653/v1/2024.emnlp-main.46 [25] Longhui Yu, Weisen Jiang, Han Shi, Jincheng Yu, Zhengying Liu, Yu Zhang, James T Kwok, Zhenguo Li, Adrian Weller, and Weiyang Liu. 2023. Metamath: Bootstrap your own mathematical questions for large language models. arXiv preprint arXiv:2309.12284 (2023). [26] Qingru Zhang, Minshuo Chen, Alexander Bukharin, Nikos Karampatziakis, Pengcheng He, Yu Cheng, Weizhu Chen, and Tuo Zhao. 2023. Adalora: Adaptive budget allocation for parameter-efficient fine-tuning. arXiv preprint arXiv:2303.10512 (2023). [27] Siyan Zhao, Mingyi Hong, Yang Liu, Devamanyu Hazarika, and Kaixiang Lin. 2025. Do llms recognize your preferences? evaluating personalized preference following in llms. International Conference on Learning Representations (ICLR) 
+
+(2025).
