@@ -25,3 +25,65 @@ subscriptions:
     stage: A
     diff_threshold_pct: 15
   keyword_recall_mode: or
+  intent_profiles:
+    - tag: vlam
+      description: 聚焦 VLA 多模态模型主干架构、跨模态融合结构、轻量化设计，以及 LoRA/PEFT/ 提示调优等高效微调方法的文献检索
+      enabled: true
+      paper_sources:
+        - arxiv
+      keywords:
+        - keyword: reinforcement learning
+          keyword_cn: 强化学习
+          query: reinforcement learning
+        - keyword: PEFT
+          keyword_cn: 参数高效微调
+          query: PEFT
+        - keyword: Vision-Language Navigation
+          keyword_cn: 视觉语言导航
+          query: multimodal learning
+        - keyword: fine-tuning
+          keyword_cn: 微调
+          query: fine-tuning
+        - keyword: Robot Policy Architecture
+          keyword_cn: 机器人策略网络架构
+          query: V
+        - keyword: Vision-Language-Action
+          keyword_cn: 视觉语言动作模型
+          query: VLA model
+      intent_queries:
+        - query: generalization capabilities of VLA in unseen environments
+          query_cn: VLA在未知环境中的泛化能力
+          enabled: true
+          source: manual
+          note: ''
+        - query: state of the art Vision Language Action model backbone and cross modal fusion architecture
+          query_cn: VLA 模型主干网络与跨模态融合架构最新研究进展
+          enabled: true
+          source: manual
+          note: ''
+        - query: PEFT efficient fine tuning strategies for large pre trained VLA robot models
+          query_cn: 预训练大尺寸 VLA 机器人模型的 PEFT 高效微调方案
+          enabled: true
+          source: manual
+          note: ''
+        - query: end to end unified multimodal architecture design for vision language action tasks
+          query_cn: 面向视觉语言动作任务的端到端统一多模态架构设计
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-07-09T13:43:30.636Z'
+source_backends:
+  arxiv:
+    papers_table: arxiv_papers
+    use_vector_rpc: true
+    vector_rpc: match_arxiv_papers
+    vector_rpc_exact: match_arxiv_papers_exact
+    use_bm25_rpc: true
+    bm25_rpc: match_arxiv_papers_bm25
+    sync_table: arxiv_sync_status
+    sync_success_value: success
+    schema: public
+    kind: supabase
+    enabled: true
+    url: https://lyucdwgefyfbmaiopjbk.supabase.co
+    anon_key: sb_publishable_lX-oi64Uxyd7SIVv3_w2Uw_MTOojeKq
