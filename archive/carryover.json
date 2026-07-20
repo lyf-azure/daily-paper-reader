@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-07-19T20:57:14.978807+00:00",
-  "updated_date": "20260719",
+  "generated_at": "2026-07-20T21:47:36.579620+00:00",
+  "updated_date": "20260720",
   "carryover_days": 9,
   "tag_states": {
     "vlam": {
-      "updated_date": "20260719",
+      "updated_date": "20260720",
       "carryover_days": 9,
       "items": []
     }
